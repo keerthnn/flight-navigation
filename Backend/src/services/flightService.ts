@@ -2,9 +2,11 @@ import { cache } from '../cache/memoryCache';
 import { env } from '../config/env';
 import { AirportRepository } from '../repositories/airportRepository';
 import { FlightPlanProvider } from '../providers/flightPlanProvider';
+import { FlightTrackingProvider } from '../providers/flightTrackingProvider';
 import { FuelProvider } from '../providers/fuelProvider';
 import { WeatherProvider } from '../providers/weatherProvider';
-import { RouteIntelligence } from '../types/domain';
+import { LiveFlightProvider, RouteIntelligence } from '../types/domain';
+import { routeContextForPoint } from '../utils/geo';
 
 export class FlightService {
   constructor(
@@ -12,6 +14,7 @@ export class FlightService {
     private readonly flights: FlightPlanProvider,
     private readonly weather: WeatherProvider,
     private readonly fuel: FuelProvider,
+    private readonly tracking: FlightTrackingProvider,
   ) {}
 
   searchAirports(q: string, limit: number) {
@@ -24,6 +27,11 @@ export class FlightService {
     );
   }
 
+  async createRoute(fromICAO: string, toICAO: string) {
+    const [route] = await this.searchFlightPlans(fromICAO, toICAO, 1);
+    return this.getFlightPlan(route.id);
+  }
+
   getFlightPlan(id: string) {
     return cache.wrap(`plan:${id}`, env.CACHE_TTL_SECONDS, () => this.flights.getById(id));
   }
@@ -32,6 +40,29 @@ export class FlightService {
     return cache.wrap(`fuel:${aircraft}:${distanceKm}`, env.CACHE_TTL_SECONDS, () =>
       this.fuel.estimate(aircraft, distanceKm),
     );
+  }
+
+  async getActiveFlightsNearRoute(id: string, radiusKm: number, limit: number) {
+    return cache.wrap(`active-flights:${id}:${radiusKm}:${limit}`, 30, async () => {
+      const flight = await this.getFlightPlan(id);
+      return this.tracking.getFlightsNearRoute(flight.route.nodes, radiusKm, limit);
+    });
+  }
+
+  async getLiveFlight(provider: LiveFlightProvider, flightId: string, routeId?: string) {
+    const latest = await this.tracking.getFlight(provider, flightId);
+    if (!routeId) return latest;
+
+    const route = await this.getFlightPlan(routeId);
+    const routeContext = routeContextForPoint(route.route.nodes, {
+      latitude: latest.flight.latitude,
+      longitude: latest.flight.longitude,
+    });
+    return this.tracking.getFlight(provider, flightId, routeContext);
+  }
+
+  getFlightTrack(provider: LiveFlightProvider, flightId: string) {
+    return cache.wrap(`track:${provider}:${flightId}`, 30, () => this.tracking.getTrack(provider, flightId));
   }
 
   async getRouteIntelligence(id: string, aircraft: string): Promise<RouteIntelligence> {

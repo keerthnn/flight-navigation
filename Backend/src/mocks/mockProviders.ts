@@ -1,5 +1,6 @@
 import { Airport } from '../types/domain';
 import { FlightPlanProvider, GeneratedFlightPlanProvider } from '../providers/flightPlanProvider';
+import { MockFlightTrackingProvider } from '../providers/flightTrackingProvider';
 import { LocalFuelProvider } from '../providers/fuelProvider';
 import { WeatherProvider } from '../providers/weatherProvider';
 import { AirportRepository } from '../repositories/airportRepository';
@@ -61,4 +62,8 @@ export function createMockWeatherProvider(): WeatherProvider {
 
 export function createMockFuelProvider(): LocalFuelProvider {
   return new LocalFuelProvider();
+}
+
+export function createMockFlightTrackingProvider(): MockFlightTrackingProvider {
+  return new MockFlightTrackingProvider();
 }

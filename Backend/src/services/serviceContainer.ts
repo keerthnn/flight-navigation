@@ -7,6 +7,7 @@ import {
   MockAirportRepository,
 } from '../mocks/mockProviders';
 import { FlightPlanDatabaseProvider, GeneratedFlightPlanProvider } from '../providers/flightPlanProvider';
+import { CompositeFlightTrackingProvider, MockFlightTrackingProvider } from '../providers/flightTrackingProvider';
 import { LocalFuelProvider } from '../providers/fuelProvider';
 import { CompositeWeatherProvider } from '../providers/weatherProvider';
 import { AirportRepository } from '../repositories/airportRepository';
@@ -25,6 +26,7 @@ export function createServiceContainer(): ServiceContainer {
       createMockFlightPlanProvider(),
       createMockWeatherProvider(),
       createMockFuelProvider(),
+      new MockFlightTrackingProvider(),
     );
     return {
       flightService,
@@ -37,7 +39,8 @@ export function createServiceContainer(): ServiceContainer {
   const flightPlans = new FlightPlanDatabaseProvider(generatedFlightPlans);
   const weather = new CompositeWeatherProvider();
   const fuel = new LocalFuelProvider();
-  const flightService = new FlightService(airports, flightPlans, weather, fuel);
+  const tracking = new CompositeFlightTrackingProvider();
+  const flightService = new FlightService(airports, flightPlans, weather, fuel, tracking);
 
   return {
     flightService,

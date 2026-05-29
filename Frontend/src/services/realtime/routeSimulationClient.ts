@@ -10,6 +10,7 @@ export function createRouteSimulationSocket(
   },
 ): WebSocket {
   const url = new URL(config.wsBaseUrl);
+  url.pathname = '/ws/simulation';
   url.searchParams.set('flightPlanId', flightPlanId);
   url.searchParams.set('intervalMs', '750');
 

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const vitest_1 = require("vitest");
 const airportRepository_1 = require("../repositories/airportRepository");
 const flightPlanProvider_1 = require("../providers/flightPlanProvider");
+const flightTrackingProvider_1 = require("../providers/flightTrackingProvider");
 const fuelProvider_1 = require("../providers/fuelProvider");
 const weatherProvider_1 = require("../providers/weatherProvider");
 (0, vitest_1.describe)('core aviation utilities', () => {
@@ -13,6 +14,13 @@ const weatherProvider_1 = require("../providers/weatherProvider");
         (0, vitest_1.expect)(plans[0].fromICAO).toBe('VIDP');
         (0, vitest_1.expect)(plans[0].toICAO).toBe('VOBL');
         (0, vitest_1.expect)(plans[0].distance).toBeGreaterThan(1000);
+    });
+    (0, vitest_1.it)('returns mock active flights around a generated route', async () => {
+        const provider = new flightPlanProvider_1.GeneratedFlightPlanProvider(new airportRepository_1.AirportRepository());
+        const detail = await provider.getById('generated-VIDP-VOBL');
+        const activeFlights = await new flightTrackingProvider_1.MockFlightTrackingProvider().getFlightsNearRoute(detail.route.nodes, 150, 5);
+        (0, vitest_1.expect)(activeFlights.flights.length).toBeGreaterThan(0);
+        (0, vitest_1.expect)(activeFlights.source).toBe('mock');
     });
     (0, vitest_1.it)('estimates fuel and emissions deterministically', async () => {
         const estimate = await new fuelProvider_1.LocalFuelProvider().estimate('A320', 1000);

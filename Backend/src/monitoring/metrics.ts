@@ -18,6 +18,9 @@ export interface MetricsSnapshot {
     openMeteoSuccess: number;
     syntheticWeatherFallback: number;
     localFuelEstimate: number;
+    openSkySuccess: number;
+    adsbLolSuccess: number;
+    flightTrackingMockFallback: number;
   };
   websocket: {
     connections: number;
@@ -41,6 +44,9 @@ const counters = {
   openMeteoSuccess: 0,
   syntheticWeatherFallback: 0,
   localFuelEstimate: 0,
+  openSkySuccess: 0,
+  adsbLolSuccess: 0,
+  flightTrackingMockFallback: 0,
   websocketConnections: 0,
   websocketActiveConnections: 0,
   websocketMessagesSent: 0,
@@ -96,6 +102,9 @@ export const metrics = {
         openMeteoSuccess: counters.openMeteoSuccess,
         syntheticWeatherFallback: counters.syntheticWeatherFallback,
         localFuelEstimate: counters.localFuelEstimate,
+        openSkySuccess: counters.openSkySuccess,
+        adsbLolSuccess: counters.adsbLolSuccess,
+        flightTrackingMockFallback: counters.flightTrackingMockFallback,
       },
       websocket: {
         connections: counters.websocketConnections,

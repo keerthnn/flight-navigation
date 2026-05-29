@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { config } from '../../config/env';
 import airplane from '../../assets/airplane1.png';
 import airport from '../../assets/airport.png';
-import { RouteNode } from '../../types/domain';
+import { FlightTrackPoint, LiveFlight, RouteNode } from '../../types/domain';
 
 interface RouteMapProps {
   nodes: RouteNode[];
-  livePosition?: [number, number];
+  activeFlights?: LiveFlight[];
+  selectedFlight?: LiveFlight;
+  trackPoints?: FlightTrackPoint[];
 }
 
 const aircraftIcon = new L.Icon({
@@ -23,40 +25,9 @@ const airportIcon = new L.Icon({
   iconAnchor: [9, 9],
 });
 
-export function RouteMap({ nodes, livePosition }: RouteMapProps) {
+export function RouteMap({ nodes, activeFlights = [], selectedFlight, trackPoints = [] }: RouteMapProps) {
   const path = useMemo(() => nodes.map((node) => [node.lat, node.lon] as [number, number]), [nodes]);
-  const [position, setPosition] = useState(path[0]);
-  const frameRef = useRef<number>();
-
-  useEffect(() => {
-    if (livePosition) {
-      setPosition(livePosition);
-      return;
-    }
-
-    let step = 0;
-    const stepsPerSegment = 160;
-
-    function animate() {
-      const segment = Math.floor(step / stepsPerSegment);
-      if (segment >= path.length - 1) {
-        setPosition(path[path.length - 1]);
-        return;
-      }
-
-      const start = path[segment];
-      const end = path[segment + 1];
-      const factor = (step % stepsPerSegment) / stepsPerSegment;
-      setPosition([start[0] + (end[0] - start[0]) * factor, start[1] + (end[1] - start[1]) * factor]);
-      step += 1;
-      frameRef.current = window.requestAnimationFrame(animate);
-    }
-
-    frameRef.current = window.requestAnimationFrame(animate);
-    return () => {
-      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
-    };
-  }, [livePosition, path]);
+  const trackPath = useMemo(() => trackPoints.map((point) => [point.latitude, point.longitude] as [number, number]), [trackPoints]);
 
   return (
     <MapContainer className="route-map" center={path[0]} zoom={5} scrollWheelZoom>
@@ -78,9 +49,34 @@ export function RouteMap({ nodes, livePosition }: RouteMapProps) {
           </Marker>
         ),
       )}
-      <Marker position={livePosition ?? position} icon={aircraftIcon}>
-        <Popup>Simulated aircraft position</Popup>
-      </Marker>
+      {trackPath.length > 1 ? <Polyline positions={trackPath} color="#a78bfa" weight={3} dashArray="6 8" opacity={0.9} /> : null}
+      {activeFlights.map((flight) => (
+        <CircleMarker
+          key={flight.id}
+          center={[flight.latitude, flight.longitude]}
+          radius={7}
+          color={flight.provider === 'mock' ? '#a78bfa' : '#22c55e'}
+          fillColor={flight.provider === 'mock' ? '#a78bfa' : '#22c55e'}
+          fillOpacity={0.72}
+        >
+          <Popup>
+            <strong>{flight.callsign ?? flight.id}</strong>
+            <br />
+            Provider: {flight.provider}
+            <br />
+            Altitude: {flight.altitudeMeters ? `${Math.round(flight.altitudeMeters)} m` : 'unknown'}
+          </Popup>
+        </CircleMarker>
+      ))}
+      {selectedFlight ? (
+        <Marker position={[selectedFlight.latitude, selectedFlight.longitude]} icon={aircraftIcon}>
+          <Popup>
+            <strong>{selectedFlight.callsign ?? selectedFlight.id}</strong>
+            <br />
+            Actual provider position
+          </Popup>
+        </Marker>
+      ) : null}
     </MapContainer>
   );
 }

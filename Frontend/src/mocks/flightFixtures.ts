@@ -1,4 +1,4 @@
-import { Airport, FlightPlanSummary, RouteIntelligence } from '../types/domain';
+import { ActiveFlightsResult, Airport, FlightPlanSummary, RouteIntelligence } from '../types/domain';
 
 export const mockAirports: Airport[] = [
   {
@@ -87,4 +87,34 @@ export const mockRouteIntelligence: RouteIntelligence = {
   },
   routeWeight: 3,
   generatedAt: '2026-05-29T00:00:00.000Z',
+};
+
+export const mockActiveFlights: ActiveFlightsResult = {
+  source: 'mock',
+  generatedAt: '2026-05-29T00:00:00.000Z',
+  demo: true,
+  flights: [
+    {
+      id: 'mock-VIDP-1',
+      provider: 'mock',
+      callsign: 'DEMO101',
+      icao24: 'demo01',
+      registration: 'VT-DMO',
+      aircraftType: 'A320',
+      operator: 'Demo Air',
+      originCountry: 'Demo Network',
+      latitude: 28.9,
+      longitude: 76.9,
+      altitudeMeters: 9300,
+      geoAltitudeMeters: 9400,
+      speedKnots: 431,
+      headingDegrees: 168,
+      verticalRate: 0.8,
+      squawk: '1200',
+      onGround: false,
+      lastSeen: '2026-05-29T00:00:00.000Z',
+      sourceUpdatedAt: '2026-05-29T00:00:00.000Z',
+      demo: true,
+    },
+  ],
 };

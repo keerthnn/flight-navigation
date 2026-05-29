@@ -32,8 +32,9 @@ export function providersController(_req: Request, res: Response): void {
       configured: true,
     },
     realtime: {
-      mode: 'websocket-route-simulation',
-      path: '/ws/simulation?flightPlanId=<id>&aircraft=A320',
+      mode: 'websocket-live-flight-tracking',
+      path: '/ws/flights/:provider/:flightId/live?routeId=<route-id>',
+      demoFallback: '/ws/simulation?flightPlanId=<id>&aircraft=A320',
     },
   });
 }

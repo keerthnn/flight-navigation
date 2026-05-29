@@ -17,6 +17,8 @@ const envSchema = zod_1.z.object({
     AVIATION_WEATHER_BASE_URL: zod_1.z.string().url().default('https://aviationweather.gov/api/data'),
     OPEN_METEO_BASE_URL: zod_1.z.string().url().default('https://api.open-meteo.com/v1'),
     OPENSKY_BASE_URL: zod_1.z.string().url().default('https://opensky-network.org/api'),
+    ADSB_LOL_BASE_URL: zod_1.z.string().url().default('https://api.adsb.lol'),
+    FLIGHT_TRACKING_MODE: zod_1.z.enum(['auto', 'mock']).default('auto'),
     CACHE_TTL_SECONDS: zod_1.z.coerce.number().int().positive().default(300),
     RATE_LIMIT_WINDOW_MS: zod_1.z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_MAX: zod_1.z.coerce.number().int().positive().default(120),

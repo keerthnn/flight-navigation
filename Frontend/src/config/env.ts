@@ -8,7 +8,7 @@ export const config = {
 function deriveWebSocketUrl(apiBaseUrl: string): string {
   const url = new URL(apiBaseUrl);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = '/ws/simulation';
+  url.pathname = '/ws';
   url.search = '';
   return url.toString();
 }

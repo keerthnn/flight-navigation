@@ -298,7 +298,9 @@ button {
 .flight-list,
 .weather-list,
 .metric-grid,
-.recent-searches {
+.recent-searches,
+.traffic-panel,
+.flight-detail-panel {
   display: grid;
   gap: 12px;
 }
@@ -501,6 +503,71 @@ button {
   gap: 4px;
   padding: 12px;
   border-bottom: 1px solid var(--line);
+}
+
+.traffic-panel,
+.flight-detail-panel {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.compact-title {
+  margin-bottom: 4px;
+}
+
+.compact-title h3 {
+  margin: 0;
+}
+
+.traffic-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+}
+
+.traffic-row.selected {
+  padding-inline: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.traffic-panel small,
+.traffic-panel span,
+.flight-detail-panel dt {
+  color: var(--muted);
+}
+
+.demo-badge {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, #a78bfa 48%, transparent);
+  border-radius: 8px;
+  color: #ede9fe;
+  background: rgba(124, 58, 237, 0.28);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.flight-detail-panel dl {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.flight-detail-panel dd {
+  margin: 0;
 }
 
 .centered-state,

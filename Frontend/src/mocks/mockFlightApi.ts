@@ -1,4 +1,4 @@
-import { mockAirports, mockFlightPlans, mockRouteIntelligence } from './flightFixtures';
+import { mockActiveFlights, mockAirports, mockFlightPlans, mockRouteIntelligence } from './flightFixtures';
 
 export const mockFlightApi = {
   getProviders: async () => ({ flightPlans: { mode: 'generated-fallback' } }),
@@ -6,4 +6,5 @@ export const mockFlightApi = {
     mockAirports.filter((airport) => airport.name.toLowerCase().includes(query.toLowerCase()) || airport.icao.includes(query.toUpperCase())),
   searchFlightPlans: async () => mockFlightPlans,
   getRouteIntelligence: async () => mockRouteIntelligence,
+  getActiveFlights: async () => mockActiveFlights,
 };

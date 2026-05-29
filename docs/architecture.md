@@ -8,7 +8,7 @@
 - `features`: route search and flight detail workflows.
 - `components`: reusable layout, map, chart, UI, and feedback components.
 - `services/api`: typed HTTP gateway to the backend.
-- `services/realtime`: WebSocket gateway for route simulation.
+- `services/realtime`: WebSocket gateway for selected-aircraft live telemetry, with polling fallback.
 - `hooks`: reusable state helpers such as debouncing and async execution.
 - `store`: typed client state for selected airports, recent searches, provider status, and active route session.
 - `mocks`: deterministic fixtures for UI tests and local contract examples.
@@ -38,5 +38,6 @@ The browser never calls third-party aviation or weather providers directly.
 - `monitoring`: health-adjacent metrics and provider counters.
 - `jobs`: scheduled-job boundaries such as future airport refresh.
 - `schemas`: shared non-HTTP validation schemas.
+- `providers/flightTrackingProvider.ts`: free active-aircraft tracking adapter with OpenSky, ADSB.lol, selected-flight detail, track metadata, and mock fallback.
 
 This keeps external APIs replaceable and business behavior testable.

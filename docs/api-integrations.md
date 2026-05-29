@@ -49,14 +49,22 @@ Current frontend map component: `Frontend/src/components/maps/RouteMap.tsx`.
 - Production should use a compliant tile provider or self-hosted tiles.
 - OSM public tiles are not production infrastructure for heavy traffic; configure a real tile provider before public launch.
 
-## Realtime Flight Tracking
+## Live Flight Tracking
 
-Current simulation gateway: `Backend/src/websocket/routeSimulation.ts`.
+Current live flight provider: `Backend/src/providers/flightTrackingProvider.ts`.
 
-- URL: `ws://<backend-host>/ws/simulation?flightPlanId=<id>&aircraft=A320`.
-- Frontend hook: `Frontend/src/hooks/useRouteSimulation.ts`.
-- Fallback: local map animation if WebSocket connection fails or closes.
-- Future live aircraft data: implement an OpenSky adapter behind a new provider interface and keep operational-use licensing constraints in deployment docs.
+- Endpoint: `GET /api/flightplan/:id/active-flights?radiusKm=150&limit=25`.
+- Route-first endpoint: `GET /api/routes/:routeId/active-flights?radiusKm=150&limit=25`.
+- Selected flight detail: `GET /api/flights/:provider/:flightId?routeId=<routeId>`.
+- Track endpoint: `GET /api/flights/:provider/:flightId/track`.
+- Live stream: `WS /ws/flights/:provider/:flightId/live?routeId=<routeId>`.
+- Provider order: OpenSky `/states/all` bounding box, ADSB.lol `/v2/point/{lat}/{lon}/{radius}`, then mock traffic.
+- Env: `OPENSKY_BASE_URL`, `ADSB_LOL_BASE_URL`, `FLIGHT_TRACKING_MODE=auto|mock`.
+- OpenSky terms: free REST use is intended for non-profit research/education; operational or commercial use requires a written license.
+- ADSB.lol terms: free/open-source API, but production users should contact the project and future API keys may be required.
+- Frontend rendering: `Frontend/src/components/maps/RouteMap.tsx` overlays active aircraft as traffic markers.
+
+The old route animation socket remains only as demo fallback infrastructure. It is not part of the default flight-tracking experience.
 
 ## Route Optimization
 

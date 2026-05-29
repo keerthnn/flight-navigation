@@ -25,6 +25,7 @@ Use this endpoint in demos to explain why the app can run without paid keys whil
 - HTTP request counts by method and status.
 - Cache hits, misses, writes, and size.
 - Provider success/fallback counters.
+- Active-flight provider success/fallback counters and WebSocket live-flight message counters.
 - WebSocket connection and message counters.
 - Process uptime.
 

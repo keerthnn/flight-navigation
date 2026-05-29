@@ -4,7 +4,9 @@ exports.MockAirportRepository = void 0;
 exports.createMockFlightPlanProvider = createMockFlightPlanProvider;
 exports.createMockWeatherProvider = createMockWeatherProvider;
 exports.createMockFuelProvider = createMockFuelProvider;
+exports.createMockFlightTrackingProvider = createMockFlightTrackingProvider;
 const flightPlanProvider_1 = require("../providers/flightPlanProvider");
+const flightTrackingProvider_1 = require("../providers/flightTrackingProvider");
 const fuelProvider_1 = require("../providers/fuelProvider");
 const airportRepository_1 = require("../repositories/airportRepository");
 class MockAirportRepository extends airportRepository_1.AirportRepository {
@@ -60,4 +62,7 @@ function createMockWeatherProvider() {
 }
 function createMockFuelProvider() {
     return new fuelProvider_1.LocalFuelProvider();
+}
+function createMockFlightTrackingProvider() {
+    return new flightTrackingProvider_1.MockFlightTrackingProvider();
 }

@@ -53,6 +53,66 @@ export interface FuelEstimate {
   source: 'local-estimator';
 }
 
+export type LiveFlightProvider = 'opensky' | 'adsblol' | 'mock';
+
+export interface LiveFlight {
+  id: string;
+  provider: LiveFlightProvider;
+  callsign?: string;
+  icao24?: string;
+  registration?: string;
+  aircraftType?: string;
+  operator?: string;
+  originCountry?: string;
+  latitude: number;
+  longitude: number;
+  altitudeMeters?: number;
+  geoAltitudeMeters?: number;
+  speedKnots?: number;
+  headingDegrees?: number;
+  verticalRate?: number;
+  squawk?: string;
+  onGround: boolean;
+  lastSeen: string;
+  sourceUpdatedAt: string;
+  demo: boolean;
+}
+
+export interface ActiveFlightsResult {
+  flights: LiveFlight[];
+  source: LiveFlightProvider;
+  generatedAt: string;
+  demo: boolean;
+}
+
+export interface FlightTrackPoint {
+  latitude: number;
+  longitude: number;
+  altitudeMeters?: number;
+  timestamp: string;
+}
+
+export interface FlightTrackResult {
+  provider: LiveFlightProvider;
+  flightId: string;
+  points: FlightTrackPoint[];
+  available: boolean;
+  message?: string;
+}
+
+export interface RouteContext {
+  distanceFromRouteKm: number;
+  progressPercent: number;
+  remainingDistanceKm: number;
+}
+
+export interface LiveFlightDetail {
+  flight: LiveFlight;
+  routeContext?: RouteContext;
+  weather?: WeatherPoint;
+  generatedAt: string;
+}
+
 export interface RouteIntelligence {
   flight: FlightPlanDetail;
   weather: WeatherPoint[];

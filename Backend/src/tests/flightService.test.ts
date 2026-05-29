@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AirportRepository } from '../repositories/airportRepository';
 import { GeneratedFlightPlanProvider } from '../providers/flightPlanProvider';
+import { MockFlightTrackingProvider } from '../providers/flightTrackingProvider';
 import { LocalFuelProvider } from '../providers/fuelProvider';
 import { weatherRisk } from '../providers/weatherProvider';
 
@@ -13,6 +14,15 @@ describe('core aviation utilities', () => {
     expect(plans[0].fromICAO).toBe('VIDP');
     expect(plans[0].toICAO).toBe('VOBL');
     expect(plans[0].distance).toBeGreaterThan(1000);
+  });
+
+  it('returns mock active flights around a generated route', async () => {
+    const provider = new GeneratedFlightPlanProvider(new AirportRepository());
+    const detail = await provider.getById('generated-VIDP-VOBL');
+    const activeFlights = await new MockFlightTrackingProvider().getFlightsNearRoute(detail.route.nodes, 150, 5);
+
+    expect(activeFlights.flights.length).toBeGreaterThan(0);
+    expect(activeFlights.source).toBe('mock');
   });
 
   it('estimates fuel and emissions deterministically', async () => {

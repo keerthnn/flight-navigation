@@ -22,6 +22,7 @@ This project was refactored from a direct-API React/Express app into an aviation
 
 - Secrets never leave the backend.
 - External API churn is contained in provider adapters.
-- The frontend can continue working when realtime sockets fail.
+- The frontend can continue working when live-flight sockets fail because selected aircraft detail falls back to 10-second polling.
+- The active-flight layer uses OpenSky/ADSB.lol only through backend adapters, preserving free demo behavior and clean replacement boundaries.
 - The app has CI-grade validation: typecheck, unit tests, integration tests, build, audit, and Playwright smoke coverage.
 - The structure supports future auth, persistence, analytics, and live aircraft providers without rewriting the core route flow.

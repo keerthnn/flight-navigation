@@ -33,16 +33,18 @@ Open `http://localhost:5173`. The backend runs on `http://localhost:5001`.
 - Search flight plans through the backend adapter.
 - Use Flight Plan Database when `FLIGHT_PLAN_DB_API_KEY` is configured.
 - Fall back to generated routes when live provider access is unavailable.
-- Inspect route map, WebSocket-backed simulated aircraft movement, weather impact, fuel estimate, emissions estimate, provider mode, realtime status, and exportable JSON summary.
+- Inspect route corridor, active aircraft near that corridor, weather impact, fuel estimate, emissions estimate, provider mode, selected-aircraft telemetry, and exportable JSON summary.
+- Select a real/demo aircraft near the route. OpenSky is tried first, ADSB.lol is the fallback, and clearly labeled demo traffic is used only when live data is unavailable or mock mode is enabled.
 
 ## Interview Walkthrough
 
 1. The browser talks only to the backend API and WebSocket gateway; no third-party secrets or provider URLs are embedded in feature code.
 2. The backend uses provider interfaces for flight plans, weather, airports, and fuel so deprecated or paid APIs can be replaced without rewriting controllers or UI.
 3. Deterministic fallback providers keep demos stable when live-free APIs are rate-limited, unavailable, or require future keys.
-4. Monitoring endpoints expose cache, provider fallback, HTTP request, and WebSocket counters for production-readiness conversations.
-5. The frontend uses feature modules, shared UI primitives, a typed store, lazy-loaded pages, and a realtime socket hook with local animation fallback.
-6. CI validates type safety, tests, builds, audit checks, and Playwright route-flow coverage.
+4. Active flight tracking is isolated behind backend providers so the app can use free live networks without coupling React to third-party APIs.
+5. Monitoring endpoints expose cache, provider fallback, HTTP request, and WebSocket counters for production-readiness conversations.
+6. The frontend uses feature modules, shared UI primitives, a typed store, lazy-loaded pages, and a live-flight socket hook with polling fallback.
+7. CI validates type safety, tests, builds, audit checks, and Playwright route-flow coverage.
 
 ## Validation
 
