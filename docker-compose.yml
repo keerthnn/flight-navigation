@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./Backend
+    env_file:
+      - ./Backend/.env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./Frontend/public/iata-icao.csv:/app/data/iata-icao.csv:ro
+    environment:
+      AIRPORT_CSV_PATH: /app/data/iata-icao.csv
+
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:5000/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
