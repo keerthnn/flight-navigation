@@ -15,8 +15,8 @@ export function AppLayout({ children }: PropsWithChildren) {
             <Plane size={20} />
           </span>
           <span>
-            <strong>FlightNav Intel</strong>
-            <small>{location.pathname === '/' ? 'Route planning' : 'Route intelligence'}</small>
+            <strong>Flight Data</strong>
+            <small>{location.pathname === '/' ? 'Route planning' : 'Route Data'}</small>
           </span>
         </Link>
         <button className="icon-button" type="button" onClick={toggleTheme} aria-label="Toggle color theme">
