@@ -1,3 +1,5 @@
+import { Alert, Stack, Typography } from '@mui/material';
+
 interface EmptyStateProps {
   title: string;
   description: string;
@@ -5,9 +7,9 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <div className="empty-state">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
+    <Stack spacing={1}>
+      <Typography variant="h6">{title}</Typography>
+      <Alert severity="info">{description}</Alert>
+    </Stack>
   );
 }

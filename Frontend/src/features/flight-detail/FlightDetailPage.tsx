@@ -1,11 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, Gauge, PlaneTakeoff, RadioTower } from 'lucide-react';
-import { RiskBars } from '../../components/charts/RiskBars';
-import { EmptyState } from '../../components/feedback/EmptyState';
-import { LoadingState } from '../../components/feedback/LoadingState';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Grid,
+  Paper,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Typography,
+} from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DownloadIcon from '@mui/icons-material/Download';
 import { RouteMap } from '../../components/maps/RouteMap';
-import { MetricCard } from '../../components/ui/MetricCard';
 import { DEFAULT_AIRCRAFT } from '../../constants/aircraft';
 import { useAsync } from '../../hooks/useAsync';
 import { useLiveFlight } from '../../hooks/useLiveFlight';
@@ -23,14 +39,25 @@ export default function FlightDetailPage() {
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
   const [selectedFlightSnapshot, setSelectedFlightSnapshot] = useState<LiveFlight>();
   const [selectedMissingSince, setSelectedMissingSince] = useState<number | null>(null);
+  const [detailTab, setDetailTab] = useState(0);
   const flights = activeFlights.data?.flights ?? [];
-  const selectedFromList = selectedFlightId
-    ? flights.find((flight) => getFlightStableId(flight) === selectedFlightId)
-    : undefined;
+  const selectedFromList = selectedFlightId ? flights.find((flight) => getFlightStableId(flight) === selectedFlightId) : undefined;
   const selectedFlight = selectedFromList ?? selectedFlightSnapshot;
   const liveFlight = useLiveFlight(selectedFlight?.provider, selectedFlight?.id, id);
   const selectedFlightForUi = liveFlight.detail?.flight ?? selectedFlight;
+  const selectedStableId = selectedFlightForUi ? getFlightStableId(selectedFlightForUi) : null;
   const store = useAppStore();
+
+  const metrics = useMemo(() => {
+    if (!data) return [];
+    return [
+      { label: 'Distance', value: `${formatNumber(data.flight.distance)} km` },
+      { label: 'Route Risk', value: `${data.routeWeight.toFixed(1)} / 10` },
+      { label: 'Fuel', value: `${formatNumber(data.fuel.fuelKg)} kg` },
+      { label: 'CO2', value: `${formatNumber(data.fuel.co2Kg)} kg` },
+    ];
+  }, [data]);
+
   const selectFlight = (flight: LiveFlight) => {
     const stableId = getFlightStableId(flight);
     setSelectedFlightId(stableId);
@@ -94,140 +121,149 @@ export default function FlightDetailPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return <LoadingState label="Loading route intelligence" />;
-  if (error) return <EmptyState title="Unable to load route" description={error} />;
-  if (!data) return <EmptyState title="Route not found" description="The selected flight plan could not be resolved." />;
-
-  const { flight, weather, fuel, routeWeight } = data;
+  if (loading) {
+    return (
+      <Stack direction="row" spacing={1} alignItems="center">
+        <CircularProgress size={20} />
+        <Typography>Loading route intelligence...</Typography>
+      </Stack>
+    );
+  }
+  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!data) return <Alert severity="info">Route not found.</Alert>;
 
   return (
-    <div className="detail-grid">
-      <section className="detail-sidebar">
-        <Link className="back-link" to="/">
-          <ArrowLeft size={16} /> Routes
-        </Link>
-        <div className="panel-heading compact">
-          <span className="eyebrow">
-            <PlaneTakeoff size={14} /> {flight.source}
-          </span>
-          <h1>{flight.fromICAO} to {flight.toICAO}</h1>
-          <p>{flight.fromName} to {flight.toName}</p>
-        </div>
-        <div className="metric-grid">
-          <MetricCard label="Distance" value={`${formatNumber(flight.distance)} km`} detail="great-circle estimate" />
-          <MetricCard label="Route risk" value={`${routeWeight.toFixed(1)} / 10`} detail={riskLabel(routeWeight)} />
-          <MetricCard label="Fuel" value={`${formatNumber(fuel.fuelKg)} kg`} detail={fuel.model} />
-          <MetricCard label="CO2" value={`${formatNumber(fuel.co2Kg)} kg`} detail="estimated emissions" />
-        </div>
-        <div className="realtime-status" aria-live="polite">
-          <span className={`status-dot ${liveFlight.status}`} />
-          <strong>{liveFlight.status === 'live' ? 'Live aircraft stream' : 'Polling fallback'}</strong>
-          <small>{selectedFlightForUi ? `${selectedFlightForUi.callsign ?? selectedFlightForUi.id} · provider ${selectedFlightForUi.provider}` : 'Select an active aircraft'}</small>
-        </div>
-        <button className="secondary-button" type="button" onClick={exportSummary}>
-          <Download size={18} /> Export JSON
-        </button>
-      </section>
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, xl: 3 }}>
+        <Paper sx={{ p: 2, height: '100%' }}>
+          <Stack spacing={2}>
+            <Button component={Link} to="/" startIcon={<ArrowBackIcon />} variant="outlined">
+              Back to Routes
+            </Button>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {data.flight.fromICAO} to {data.flight.toICAO}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {data.flight.fromName} to {data.flight.toName}
+            </Typography>
+            <Chip label={riskLabel(data.routeWeight)} color={data.routeWeight > 6 ? 'warning' : 'primary'} />
+            <Grid container spacing={1}>
+              {metrics.map((metric) => (
+                <Grid size={6} key={metric.label}>
+                  <Paper variant="outlined" sx={{ p: 1.25 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {metric.label}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {metric.value}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+            <Button variant="contained" startIcon={<DownloadIcon />} onClick={exportSummary}>
+              Export JSON
+            </Button>
+          </Stack>
+        </Paper>
+      </Grid>
 
-      <section className="map-panel">
-        <RouteMap
-          nodes={flight.route.nodes}
-          activeFlights={activeFlights.data?.flights}
-          selectedFlight={selectedFlightForUi}
-          trackPoints={selectedFlightDetail.data?.points}
-          onSelectFlight={selectFlight}
-        />
-      </section>
+      <Grid size={{ xs: 12, xl: 6 }}>
+        <Paper sx={{ p: 1.5 }}>
+          <Typography variant="h6" sx={{ px: 1, pb: 1, fontWeight: 700 }}>
+            2D Route and Live Traffic
+          </Typography>
+          <Box className="map-shell">
+            <RouteMap
+              nodes={data.flight.route.nodes}
+              activeFlights={activeFlights.data?.flights}
+              selectedFlight={selectedFlightForUi}
+              trackPoints={selectedFlightDetail.data?.points}
+              onSelectFlight={selectFlight}
+            />
+          </Box>
+        </Paper>
+      </Grid>
 
-      <aside className="intelligence-panel">
-        <div className="section-title">
-          <h2>Weather Impact</h2>
-          <span><Gauge size={14} /> live-free fallback</span>
-        </div>
-        <div className="provider-badge">
-          Provider mode: {store.providerStatus ? 'configured adapters ready' : 'checking adapters'}
-        </div>
-        <div className="traffic-panel">
-          <div className="section-title compact-title">
-            <h3>Active Flights</h3>
-            <span>{activeFlights.data?.source ?? 'loading'}</span>
-          </div>
-          {activeFlights.data?.demo ? <div className="demo-badge">Demo Data · Simulated Flight</div> : null}
-          {activeFlights.loading ? <small>Scanning live traffic near this route...</small> : null}
-          {activeFlights.error ? <small>{activeFlights.error}</small> : null}
-          {(activeFlights.data?.flights ?? []).slice(0, 6).map((traffic) => {
-            const stableId = getFlightStableId(traffic);
-            const isSelected = selectedFlightId === stableId;
-            return (
-              <button
-                className={isSelected ? 'traffic-row selected' : 'traffic-row'}
-                type="button"
-                key={stableId}
-                onClick={() => selectFlight(traffic)}
-              >
-              <strong>{traffic.callsign ?? traffic.id}</strong>
-              <span>{traffic.registration ?? traffic.icao24 ?? traffic.provider}</span>
-              <small>
-                {traffic.aircraftType ?? 'type unknown'} · {traffic.altitudeMeters ? `${formatNumber(traffic.altitudeMeters)} m` : 'alt unknown'} ·{' '}
-                {traffic.speedKnots ? `${formatNumber(traffic.speedKnots)} kt` : 'speed unknown'}
-              </small>
-              </button>
-            );
-          })}
-        </div>
-        {(liveFlight.detail || selectedFlightForUi) ? (
-          <div className="flight-detail-panel">
-            <div className="section-title compact-title">
-              <h3>Selected Aircraft</h3>
-              <span><RadioTower size={14} /> {liveFlight.detail?.flight.provider ?? selectedFlightForUi?.provider}</span>
-            </div>
-            {liveFlight.detail?.flight.demo || selectedFlightForUi?.demo ? <div className="demo-badge">Demo Data · Simulated Flight</div> : null}
-            <dl>
-              <dt>Callsign</dt>
-              <dd>{liveFlight.detail?.flight.callsign ?? selectedFlightForUi?.callsign ?? 'Unknown'}</dd>
-              <dt>ICAO24 / Hex</dt>
-              <dd>{liveFlight.detail?.flight.icao24 ?? selectedFlightForUi?.icao24 ?? selectedFlightForUi?.id}</dd>
-              <dt>Registration</dt>
-              <dd>{liveFlight.detail?.flight.registration ?? selectedFlightForUi?.registration ?? 'Unknown'}</dd>
-              <dt>Aircraft Type</dt>
-              <dd>{liveFlight.detail?.flight.aircraftType ?? selectedFlightForUi?.aircraftType ?? 'Unknown'}</dd>
-              <dt>Altitude</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.altitudeMeters ?? selectedFlightForUi?.altitudeMeters ?? 0)} m</dd>
-              <dt>Ground Speed</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.speedKnots ?? selectedFlightForUi?.speedKnots ?? 0)} kt</dd>
-              <dt>Heading</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.headingDegrees ?? selectedFlightForUi?.headingDegrees ?? 0)} deg</dd>
-              <dt>Route Distance</dt>
-              <dd>{liveFlight.detail?.routeContext ? `${liveFlight.detail.routeContext.distanceFromRouteKm} km` : 'Calculating'}</dd>
-              <dt>Track</dt>
-              <dd>{selectedFlightDetail.data?.available ? `${selectedFlightDetail.data.points.length} points` : 'Track unavailable'}</dd>
-            </dl>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => {
-                setSelectedFlightId(null);
-                setSelectedFlightSnapshot(undefined);
-                setSelectedMissingSince(null);
-              }}
-            >
-              Clear selection
-            </button>
-          </div>
-        ) : null}
-        <RiskBars weather={weather} />
-        <div className="weather-list">
-          {weather.map((point) => (
-            <article key={point.ident}>
-              <strong>{point.ident}</strong>
-              <span>{point.description}</span>
-              <small>
-                {point.temperatureC.toFixed(1)} C · wind {point.windSpeedMps.toFixed(1)} m/s · visibility {formatNumber(point.visibilityMeters)} m
-              </small>
-            </article>
-          ))}
-        </div>
-      </aside>
-    </div>
+      <Grid size={{ xs: 12, xl: 3 }}>
+        <Paper sx={{ p: 2, height: '100%' }}>
+          <Stack spacing={2}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Active Flights
+              </Typography>
+              <Typography variant="caption" color="text.secondary">{liveFlight.status === 'live' ? 'Live' : 'Fallback'}</Typography>
+            </Stack>
+            {activeFlights.loading ? <CircularProgress size={18} /> : null}
+            {activeFlights.error ? <Alert severity="warning">{activeFlights.error}</Alert> : null}
+
+            <TableContainer sx={{ maxHeight: 260 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Callsign</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell align="right">Alt (m)</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {flights.map((flight) => {
+                    const stableId = getFlightStableId(flight);
+                    const isSelected = selectedStableId === stableId;
+                    return (
+                      <TableRow
+                        key={stableId}
+                        hover
+                        selected={isSelected}
+                        onClick={() => selectFlight(flight)}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="body2">{flight.callsign ?? flight.id}</Typography>
+                            {flight.demo ? <Chip size="small" label="Demo" color="warning" /> : null}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>{flight.aircraftType ?? 'Unknown'}</TableCell>
+                        <TableCell align="right">{formatNumber(flight.altitudeMeters ?? 0)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Tabs value={detailTab} onChange={(_, value) => setDetailTab(value)} variant="fullWidth">
+              <Tab label="Telemetry" />
+              <Tab label="Weather" />
+            </Tabs>
+            {detailTab === 0 ? (
+              <Stack spacing={0.5}>
+                <Typography variant="body2">Provider: {selectedFlightForUi?.provider ?? '-'}</Typography>
+                <Typography variant="body2">Callsign: {selectedFlightForUi?.callsign ?? selectedFlightForUi?.id ?? '-'}</Typography>
+                <Typography variant="body2">Speed: {formatNumber(selectedFlightForUi?.speedKnots ?? 0)} kt</Typography>
+                <Typography variant="body2">Heading: {formatNumber(selectedFlightForUi?.headingDegrees ?? 0)} deg</Typography>
+                <Typography variant="body2">
+                  Track: {selectedFlightDetail.data?.available ? `${selectedFlightDetail.data.points.length} points` : 'Unavailable'}
+                </Typography>
+              </Stack>
+            ) : (
+              <Stack spacing={1}>
+                {data.weather.slice(0, 5).map((point) => (
+                  <Paper key={point.ident} variant="outlined" sx={{ p: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {point.ident}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {point.description}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
+      </Grid>
+    </Grid>
   );
 }

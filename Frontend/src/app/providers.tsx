@@ -1,36 +1,15 @@
-import { PropsWithChildren, createContext, useContext, useMemo, useState } from 'react';
+import { CssBaseline, ThemeProvider } from '@mui/material';
+import { PropsWithChildren } from 'react';
 import { AppStoreProvider } from '../store/appStore';
-
-type Theme = 'dark' | 'light';
-
-interface ThemeContextValue {
-  theme: Theme;
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+import { aviationTheme } from './theme';
 
 export function AppProviders({ children }: PropsWithChildren) {
-  const [theme, setTheme] = useState<Theme>('dark');
-  const value = useMemo(
-    () => ({
-      theme,
-      toggleTheme: () => setTheme((current) => (current === 'dark' ? 'light' : 'dark')),
-    }),
-    [theme],
-  );
-
   return (
-    <ThemeContext.Provider value={value}>
+    <ThemeProvider theme={aviationTheme}>
+      <CssBaseline />
       <AppStoreProvider>
-        <div data-theme={theme}>{children}</div>
+        {children}
       </AppStoreProvider>
-    </ThemeContext.Provider>
+    </ThemeProvider>
   );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used inside AppProviders');
-  return context;
 }

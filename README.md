@@ -1,11 +1,11 @@
 # Flight Navigation Intelligence Platform
 
-Production-style aviation route planning dashboard built with React, Vite, TypeScript, Express, and provider abstractions for flight plans, aviation weather, airport data, and fuel estimation.
+Production-style aviation route planning dashboard built with React, Vite, TypeScript, Next.js (Pages Router API), and provider abstractions for flight plans, aviation weather, airport data, and fuel estimation.
 
 ## What This Demonstrates
 
 - Feature-based React architecture with a reusable design system, dashboard layout, typed API layer, route-level code splitting, dark/light theme, loading states, empty states, and accessible airport autocomplete.
-- Modular Express backend with controllers, services, providers, repositories, validation, caching, retry, rate limiting, structured logging, CORS, health checks, WebSocket simulation, monitoring metrics, and centralized error handling.
+- Modular Next.js Pages Router backend with typed API handlers, services, providers, repositories, validation, caching, retry, structured logging, health checks, and centralized error handling.
 - Safe provider strategy: live-free APIs where possible, optional keyed integrations, deterministic fallbacks for demos, and no browser-exposed API keys.
 - Interview-ready engineering practices: TypeScript, Docker, CI workflow, API integration guide, deployment notes, and scaling roadmap.
 
@@ -25,7 +25,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:5173`. The backend runs on `http://localhost:5001`.
+Open `http://localhost:5173`. The backend runs on `http://localhost:5000`.
 
 ## Core Flows
 

@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, PropsWithChildren, ReactNode } from 'react';
+import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 
 interface State {
   error?: Error;
@@ -18,13 +19,15 @@ export class ErrorBoundary extends Component<PropsWithChildren, State> {
   render(): ReactNode {
     if (this.state.error) {
       return (
-        <div className="centered-state">
-          <h1>Flight deck needs a reset</h1>
-          <p>{this.state.error.message}</p>
-          <button type="button" onClick={() => window.location.assign('/')}>
-            Return home
-          </button>
-        </div>
+        <Box sx={{ p: 3 }}>
+          <Stack spacing={2}>
+            <Typography variant="h5">Flight deck needs a reset</Typography>
+            <Alert severity="error">{this.state.error.message}</Alert>
+            <Button type="button" variant="contained" onClick={() => window.location.assign('/')}>
+              Return Home
+            </Button>
+          </Stack>
+        </Box>
       );
     }
 

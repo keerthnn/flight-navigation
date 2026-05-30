@@ -1,4 +1,5 @@
-import { ChangeEvent, KeyboardEvent, useEffect, useState } from 'react';
+import { Autocomplete, CircularProgress, TextField } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { Airport } from '../../types/domain';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { flightApi } from '../../services/api/flightApi';
@@ -13,7 +14,7 @@ interface AirportAutocompleteProps {
 export function AirportAutocomplete({ label, placeholder, value, onSelect }: AirportAutocompleteProps) {
   const [query, setQuery] = useState(value?.name ?? '');
   const [results, setResults] = useState<Airport[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
   const debouncedQuery = useDebouncedValue(query);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
       return;
     }
 
+    setLoading(true);
     flightApi
       .searchAirports(debouncedQuery)
       .then((airports) => {
@@ -34,6 +36,9 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
       })
       .catch(() => {
         if (!cancelled) setResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
 
     return () => {
@@ -41,60 +46,43 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
     };
   }, [debouncedQuery, value?.name]);
 
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    setQuery(event.target.value);
-    setActiveIndex(0);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (!results.length) return;
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setActiveIndex((index) => Math.min(index + 1, results.length - 1));
-    }
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActiveIndex((index) => Math.max(index - 1, 0));
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      selectAirport(results[activeIndex]);
-    }
-  }
-
-  function selectAirport(airport: Airport) {
+  function selectAirport(airport: Airport | null) {
+    if (!airport) return;
     onSelect(airport);
     setQuery(airport.name);
     setResults([]);
   }
 
   return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        value={query}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        aria-autocomplete="list"
-      />
-      {results.length ? (
-        <ul className="autocomplete" role="listbox">
-          {results.map((airport, index) => (
-            <li key={airport.icao}>
-              <button
-                type="button"
-                className={index === activeIndex ? 'active' : undefined}
-                onClick={() => selectAirport(airport)}
-              >
-                <strong>{airport.icao}</strong>
-                <span>{airport.name}</span>
-                <small>{airport.regionName}, {airport.countryCode}</small>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </label>
+    <Autocomplete
+      options={results}
+      value={value ?? null}
+      loading={loading}
+      filterOptions={(options) => options}
+      getOptionLabel={(option) => `${option.icao} · ${option.name}`}
+      onChange={(_, next) => selectAirport(next)}
+      onInputChange={(_, inputValue) => setQuery(inputValue)}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          placeholder={placeholder}
+          InputProps={{
+            ...params.InputProps,
+            endAdornment: (
+              <>
+                {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
+        />
+      )}
+      renderOption={(props, option) => (
+        <li {...props} key={option.icao}>
+          {option.icao} · {option.name} · {option.regionName}, {option.countryCode}
+        </li>
+      )}
+    />
   );
 }

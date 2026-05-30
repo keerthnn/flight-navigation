@@ -1,9 +1,8 @@
-import { FormEvent, useState } from 'react';
-import { ArrowRightLeft, RadioTower, Search } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EmptyState } from '../../components/feedback/EmptyState';
-import { LoadingState } from '../../components/feedback/LoadingState';
-import { MetricCard } from '../../components/ui/MetricCard';
+import { Alert, Button, Chip, CircularProgress, Grid, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useAsync } from '../../hooks/useAsync';
 import { flightApi } from '../../services/api/flightApi';
 import { useAppStore } from '../../store/appStore';
@@ -18,13 +17,7 @@ export default function RouteSearchPage() {
   const [to, setTo] = useState<Airport | undefined>(store.selectedTo);
   const { data: flights = [], error, loading, run } = useAsync<FlightPlanSummary[]>();
 
-  function swapAirports() {
-    setFrom(to);
-    setTo(from);
-  }
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function searchRoutes() {
     if (!from || !to) return;
     store.selectFrom(from);
     store.selectTo(to);
@@ -33,79 +26,117 @@ export default function RouteSearchPage() {
   }
 
   return (
-    <div className="dashboard-grid">
-      <section className="search-panel">
-        <div className="panel-heading">
-          <span className="eyebrow">
-            <RadioTower size={14} /> Aviation intelligence
-          </span>
-          <h1>Plan resilient routes with weather and fuel awareness.</h1>
-          <p>Search airport pairs, compare generated fallback plans, and inspect route risk without exposing provider keys in the browser.</p>
-        </div>
-
-        <form className="route-form" onSubmit={handleSubmit}>
-          <AirportAutocomplete label="Departure" placeholder="Search airport or ICAO" value={from} onSelect={setFrom} />
-          <button className="swap-button" type="button" onClick={swapAirports} aria-label="Swap route endpoints">
-            <ArrowRightLeft size={18} />
-          </button>
-          <AirportAutocomplete label="Arrival" placeholder="Search airport or ICAO" value={to} onSelect={setTo} />
-          <button className="primary-button" type="submit" disabled={!from || !to || loading}>
-            <Search size={18} />
-            {loading ? 'Searching' : 'Search routes'}
-          </button>
-        </form>
-
-        {error ? <p className="inline-error">{error}</p> : null}
-      </section>
-
-      <section className="results-panel">
-        <div className="section-title">
-          <h2>Candidate Flight Plans</h2>
-          <span>{flights.length} routes</span>
-        </div>
-        {loading ? <LoadingState label="Searching route providers" /> : null}
-        {!loading && !flights.length ? (
-          <EmptyState title="No route selected" description="Choose departure and arrival airports to generate route intelligence." />
-        ) : null}
-        <div className="flight-list">
-          {flights.map((flight) => (
-            <button
-              className="flight-row"
-              type="button"
-              key={flight.id}
-              onClick={() => {
-                store.setActiveRoute(flight.id);
-                navigate(`/flight/${flight.id}`);
-              }}
-            >
-              <span>
-                <strong>{flight.fromICAO}</strong>
-                <i />
-                <strong>{flight.toICAO}</strong>
-              </span>
-              <p>{flight.fromName} to {flight.toName}</p>
-              <div className="flight-row-metrics">
-                <MetricCard label="Distance" value={`${formatNumber(flight.distance)} km`} detail={flight.source} />
-                <MetricCard label="Waypoints" value={flight.waypoints.split(',').length} detail={flight.id} />
-              </div>
-            </button>
-          ))}
-        </div>
-        {store.recentSearches.length ? (
-          <div className="recent-searches" aria-label="Recent route searches">
-            <span>Recent</span>
-            {store.recentSearches.map((search) => (
-              <button
-                type="button"
-                key={`${search.fromICAO}-${search.toICAO}`}
-                onClick={() => void run(() => flightApi.searchFlightPlans(search.fromICAO, search.toICAO))}
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, lg: 4 }}>
+        <Paper sx={{ p: 2 }}>
+          <Stack spacing={2}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Airport Search
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Plan routes and evaluate operational intelligence from backend providers.
+            </Typography>
+            <AirportAutocomplete label="Departure" placeholder="Search departure airport" value={from} onSelect={setFrom} />
+            <AirportAutocomplete label="Arrival" placeholder="Search arrival airport" value={to} onSelect={setTo} />
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" startIcon={<SwapHorizIcon />} onClick={() => { setFrom(to); setTo(from); }}>
+                Swap
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<SearchIcon />}
+                onClick={() => void searchRoutes()}
+                disabled={!from || !to || loading}
               >
-                {search.fromICAO} to {search.toICAO}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
-    </div>
+                Search Routes
+              </Button>
+            </Stack>
+            {error ? <Alert severity="error">{error}</Alert> : null}
+            {loading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2">Loading candidate routes...</Typography>
+              </Stack>
+            ) : null}
+          </Stack>
+        </Paper>
+      </Grid>
+
+      <Grid size={{ xs: 12, lg: 8 }}>
+        <Paper sx={{ p: 2 }}>
+          <Stack spacing={2}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Candidate Flight Plans
+              </Typography>
+              <Typography variant="body2" color="text.secondary">{flights.length} routes</Typography>
+            </Stack>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Route</TableCell>
+                    <TableCell>Distance</TableCell>
+                    <TableCell>Waypoints</TableCell>
+                    <TableCell>Source</TableCell>
+                    <TableCell align="right">Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {flights.map((flight) => (
+                    <TableRow key={flight.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {flight.fromICAO} to {flight.toICAO}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {flight.fromName} to {flight.toName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{formatNumber(flight.distance)} km</TableCell>
+                      <TableCell>{flight.waypoints.split(',').length}</TableCell>
+                      <TableCell>{flight.source}</TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => {
+                            store.setActiveRoute(flight.id);
+                            navigate(`/flight/${flight.id}`);
+                          }}
+                        >
+                          Open
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {!loading && flights.length === 0 ? <Alert severity="info">Search departure and arrival to load flight plans.</Alert> : null}
+          </Stack>
+        </Paper>
+      </Grid>
+
+      {store.recentSearches.length ? (
+        <Grid size={12}>
+          <Paper sx={{ p: 1.5 }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="body2" color="text.secondary">
+                Recent
+              </Typography>
+              {store.recentSearches.map((search) => (
+                <Chip
+                  key={`${search.fromICAO}-${search.toICAO}`}
+                  size="small"
+                  label={`${search.fromICAO} to ${search.toICAO}`}
+                  onClick={() => void run(() => flightApi.searchFlightPlans(search.fromICAO, search.toICAO))}
+                />
+              ))}
+            </Stack>
+          </Paper>
+        </Grid>
+      ) : null}
+    </Grid>
   );
 }
