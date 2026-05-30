@@ -12,6 +12,7 @@ import { useLiveFlight } from '../../hooks/useLiveFlight';
 import { flightApi } from '../../services/api/flightApi';
 import { useAppStore } from '../../store/appStore';
 import { ActiveFlightsResult, FlightTrackResult, LiveFlight, RouteIntelligence } from '../../types/domain';
+import { getFlightStableId } from '../../utils/flightIdentity';
 import { formatNumber, riskLabel } from '../../utils/format';
 
 export default function FlightDetailPage() {
@@ -19,9 +20,23 @@ export default function FlightDetailPage() {
   const { data, error, loading, run } = useAsync<RouteIntelligence>();
   const activeFlights = useAsync<ActiveFlightsResult>();
   const selectedFlightDetail = useAsync<FlightTrackResult>();
-  const [selectedFlight, setSelectedFlight] = useState<LiveFlight>();
+  const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
+  const [selectedFlightSnapshot, setSelectedFlightSnapshot] = useState<LiveFlight>();
+  const [selectedMissingSince, setSelectedMissingSince] = useState<number | null>(null);
+  const flights = activeFlights.data?.flights ?? [];
+  const selectedFromList = selectedFlightId
+    ? flights.find((flight) => getFlightStableId(flight) === selectedFlightId)
+    : undefined;
+  const selectedFlight = selectedFromList ?? selectedFlightSnapshot;
   const liveFlight = useLiveFlight(selectedFlight?.provider, selectedFlight?.id, id);
+  const selectedFlightForUi = liveFlight.detail?.flight ?? selectedFlight;
   const store = useAppStore();
+  const selectFlight = (flight: LiveFlight) => {
+    const stableId = getFlightStableId(flight);
+    setSelectedFlightId(stableId);
+    setSelectedFlightSnapshot(flight);
+    setSelectedMissingSince(null);
+  };
 
   useEffect(() => {
     if (id) {
@@ -32,15 +47,37 @@ export default function FlightDetailPage() {
   }, [activeFlights.run, id, run, store.setActiveRoute]);
 
   useEffect(() => {
-    const firstFlight = activeFlights.data?.flights[0];
-    if (!selectedFlight && firstFlight) setSelectedFlight(firstFlight);
-  }, [activeFlights.data?.flights, selectedFlight]);
+    if (!selectedFlightId) {
+      setSelectedFlightSnapshot(undefined);
+      setSelectedMissingSince(null);
+      return;
+    }
+
+    if (selectedFromList) {
+      setSelectedFlightSnapshot(selectedFromList);
+      setSelectedMissingSince(null);
+      return;
+    }
+
+    setSelectedMissingSince((value) => value ?? Date.now());
+  }, [selectedFlightId, selectedFromList]);
 
   useEffect(() => {
-    if (selectedFlight) {
-      void selectedFlightDetail.run(() => flightApi.getFlightTrack(selectedFlight.provider, selectedFlight.id));
+    if (!selectedFlightId || selectedFromList || selectedMissingSince === null) return;
+    const timeoutRemaining = Math.max(30_000 - (Date.now() - selectedMissingSince), 0);
+    const timer = window.setTimeout(() => {
+      setSelectedFlightId(null);
+      setSelectedFlightSnapshot(undefined);
+      setSelectedMissingSince(null);
+    }, timeoutRemaining);
+    return () => window.clearTimeout(timer);
+  }, [selectedFlightId, selectedFromList, selectedMissingSince]);
+
+  useEffect(() => {
+    if (selectedFlightForUi) {
+      void selectedFlightDetail.run(() => flightApi.getFlightTrack(selectedFlightForUi.provider, selectedFlightForUi.id));
     }
-  }, [selectedFlight, selectedFlightDetail.run]);
+  }, [selectedFlightDetail.run, selectedFlightForUi]);
 
   useEffect(() => {
     flightApi.getProviders().then(store.setProviderStatus).catch(() => undefined);
@@ -85,7 +122,7 @@ export default function FlightDetailPage() {
         <div className="realtime-status" aria-live="polite">
           <span className={`status-dot ${liveFlight.status}`} />
           <strong>{liveFlight.status === 'live' ? 'Live aircraft stream' : 'Polling fallback'}</strong>
-          <small>{selectedFlight ? `${selectedFlight.callsign ?? selectedFlight.id} · provider ${selectedFlight.provider}` : 'Select an active aircraft'}</small>
+          <small>{selectedFlightForUi ? `${selectedFlightForUi.callsign ?? selectedFlightForUi.id} · provider ${selectedFlightForUi.provider}` : 'Select an active aircraft'}</small>
         </div>
         <button className="secondary-button" type="button" onClick={exportSummary}>
           <Download size={18} /> Export JSON
@@ -96,8 +133,9 @@ export default function FlightDetailPage() {
         <RouteMap
           nodes={flight.route.nodes}
           activeFlights={activeFlights.data?.flights}
-          selectedFlight={liveFlight.detail?.flight ?? selectedFlight}
+          selectedFlight={selectedFlightForUi}
           trackPoints={selectedFlightDetail.data?.points}
+          onSelectFlight={selectFlight}
         />
       </section>
 
@@ -117,49 +155,64 @@ export default function FlightDetailPage() {
           {activeFlights.data?.demo ? <div className="demo-badge">Demo Data · Simulated Flight</div> : null}
           {activeFlights.loading ? <small>Scanning live traffic near this route...</small> : null}
           {activeFlights.error ? <small>{activeFlights.error}</small> : null}
-          {(activeFlights.data?.flights ?? []).slice(0, 6).map((traffic) => (
-            <button
-              className={selectedFlight?.id === traffic.id ? 'traffic-row selected' : 'traffic-row'}
-              type="button"
-              key={traffic.id}
-              onClick={() => setSelectedFlight(traffic)}
-            >
+          {(activeFlights.data?.flights ?? []).slice(0, 6).map((traffic) => {
+            const stableId = getFlightStableId(traffic);
+            const isSelected = selectedFlightId === stableId;
+            return (
+              <button
+                className={isSelected ? 'traffic-row selected' : 'traffic-row'}
+                type="button"
+                key={stableId}
+                onClick={() => selectFlight(traffic)}
+              >
               <strong>{traffic.callsign ?? traffic.id}</strong>
               <span>{traffic.registration ?? traffic.icao24 ?? traffic.provider}</span>
               <small>
                 {traffic.aircraftType ?? 'type unknown'} · {traffic.altitudeMeters ? `${formatNumber(traffic.altitudeMeters)} m` : 'alt unknown'} ·{' '}
                 {traffic.speedKnots ? `${formatNumber(traffic.speedKnots)} kt` : 'speed unknown'}
               </small>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
-        {(liveFlight.detail || selectedFlight) ? (
+        {(liveFlight.detail || selectedFlightForUi) ? (
           <div className="flight-detail-panel">
             <div className="section-title compact-title">
               <h3>Selected Aircraft</h3>
-              <span><RadioTower size={14} /> {liveFlight.detail?.flight.provider ?? selectedFlight?.provider}</span>
+              <span><RadioTower size={14} /> {liveFlight.detail?.flight.provider ?? selectedFlightForUi?.provider}</span>
             </div>
-            {liveFlight.detail?.flight.demo || selectedFlight?.demo ? <div className="demo-badge">Demo Data · Simulated Flight</div> : null}
+            {liveFlight.detail?.flight.demo || selectedFlightForUi?.demo ? <div className="demo-badge">Demo Data · Simulated Flight</div> : null}
             <dl>
               <dt>Callsign</dt>
-              <dd>{liveFlight.detail?.flight.callsign ?? selectedFlight?.callsign ?? 'Unknown'}</dd>
+              <dd>{liveFlight.detail?.flight.callsign ?? selectedFlightForUi?.callsign ?? 'Unknown'}</dd>
               <dt>ICAO24 / Hex</dt>
-              <dd>{liveFlight.detail?.flight.icao24 ?? selectedFlight?.icao24 ?? selectedFlight?.id}</dd>
+              <dd>{liveFlight.detail?.flight.icao24 ?? selectedFlightForUi?.icao24 ?? selectedFlightForUi?.id}</dd>
               <dt>Registration</dt>
-              <dd>{liveFlight.detail?.flight.registration ?? selectedFlight?.registration ?? 'Unknown'}</dd>
+              <dd>{liveFlight.detail?.flight.registration ?? selectedFlightForUi?.registration ?? 'Unknown'}</dd>
               <dt>Aircraft Type</dt>
-              <dd>{liveFlight.detail?.flight.aircraftType ?? selectedFlight?.aircraftType ?? 'Unknown'}</dd>
+              <dd>{liveFlight.detail?.flight.aircraftType ?? selectedFlightForUi?.aircraftType ?? 'Unknown'}</dd>
               <dt>Altitude</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.altitudeMeters ?? selectedFlight?.altitudeMeters ?? 0)} m</dd>
+              <dd>{formatNumber(liveFlight.detail?.flight.altitudeMeters ?? selectedFlightForUi?.altitudeMeters ?? 0)} m</dd>
               <dt>Ground Speed</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.speedKnots ?? selectedFlight?.speedKnots ?? 0)} kt</dd>
+              <dd>{formatNumber(liveFlight.detail?.flight.speedKnots ?? selectedFlightForUi?.speedKnots ?? 0)} kt</dd>
               <dt>Heading</dt>
-              <dd>{formatNumber(liveFlight.detail?.flight.headingDegrees ?? selectedFlight?.headingDegrees ?? 0)} deg</dd>
+              <dd>{formatNumber(liveFlight.detail?.flight.headingDegrees ?? selectedFlightForUi?.headingDegrees ?? 0)} deg</dd>
               <dt>Route Distance</dt>
               <dd>{liveFlight.detail?.routeContext ? `${liveFlight.detail.routeContext.distanceFromRouteKm} km` : 'Calculating'}</dd>
               <dt>Track</dt>
               <dd>{selectedFlightDetail.data?.available ? `${selectedFlightDetail.data.points.length} points` : 'Track unavailable'}</dd>
             </dl>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setSelectedFlightId(null);
+                setSelectedFlightSnapshot(undefined);
+                setSelectedMissingSince(null);
+              }}
+            >
+              Clear selection
+            </button>
           </div>
         ) : null}
         <RiskBars weather={weather} />

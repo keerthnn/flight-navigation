@@ -377,6 +377,19 @@ button {
   min-height: 640px;
 }
 
+.map-2d {
+  background: #0c1726;
+}
+
+.map-2d .leaflet-tile-pane {
+  filter: saturate(0.9) contrast(1.02);
+}
+
+.aircraft-div-icon {
+  background: transparent;
+  border: 0;
+}
+
 .globe-map {
   background:
     radial-gradient(circle at 50% 38%, rgba(95, 161, 219, 0.2), transparent 26rem),
