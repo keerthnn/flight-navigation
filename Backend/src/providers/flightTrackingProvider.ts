@@ -1,6 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
-import { env } from '../config/env';
-import { metrics } from '../monitoring/metrics';
+import axios, { AxiosInstance } from "axios";
+import { env } from "../config/env";
+import { metrics } from "../monitoring/metrics";
 import {
   ActiveFlightsResult,
   FlightTrackResult,
@@ -9,52 +9,97 @@ import {
   LiveFlightProvider,
   RouteContext,
   RouteNode,
-} from '../types/domain';
-import { HttpError } from '../utils/httpError';
-import { retry } from '../utils/retry';
+} from "../types/domain";
+import { HttpError } from "../utils/httpError";
+import { retry } from "../utils/retry";
 
 export interface FlightTrackingProvider {
-  getFlightsNearRoute(nodes: RouteNode[], radiusKm: number, limit: number): Promise<ActiveFlightsResult>;
-  getFlight(provider: LiveFlightProvider, flightId: string, routeContext?: RouteContext): Promise<LiveFlightDetail>;
-  getTrack(provider: LiveFlightProvider, flightId: string): Promise<FlightTrackResult>;
+  getFlightsNearRoute(
+    nodes: RouteNode[],
+    radiusKm: number,
+    limit: number,
+  ): Promise<ActiveFlightsResult>;
+  getFlight(
+    provider: LiveFlightProvider,
+    flightId: string,
+    routeContext?: RouteContext,
+  ): Promise<LiveFlightDetail>;
+  getTrack(
+    provider: LiveFlightProvider,
+    flightId: string,
+  ): Promise<FlightTrackResult>;
 }
 
 export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
   private readonly openSkyClient: AxiosInstance;
   private readonly adsbLolClient: AxiosInstance;
-  private readonly emptyFallbackProvider = new EmptyFlightTrackingFallbackProvider();
+  private readonly emptyFallbackProvider =
+    new EmptyFlightTrackingFallbackProvider();
 
   constructor() {
-    this.openSkyClient = axios.create({ baseURL: env.OPENSKY_BASE_URL, timeout: 6000 });
-    this.adsbLolClient = axios.create({ baseURL: env.ADSB_LOL_BASE_URL, timeout: 6000 });
+    this.openSkyClient = axios.create({
+      baseURL: env.OPENSKY_BASE_URL,
+      timeout: 6000,
+    });
+    this.adsbLolClient = axios.create({
+      baseURL: env.ADSB_LOL_BASE_URL,
+      timeout: 6000,
+    });
   }
 
-  async getFlightsNearRoute(nodes: RouteNode[], radiusKm: number, limit: number): Promise<ActiveFlightsResult> {
-    if (env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.emptyFallbackProvider.getFlightsNearRoute(nodes, radiusKm, limit);
+  async getFlightsNearRoute(
+    nodes: RouteNode[],
+    radiusKm: number,
+    limit: number,
+  ): Promise<ActiveFlightsResult> {
+    if (env.FLIGHT_TRACKING_MODE === "mock") {
+      return this.emptyFallbackProvider.getFlightsNearRoute(
+        nodes,
+        radiusKm,
+        limit,
+      );
     }
 
-    const openSkyFlights = await this.tryOpenSkyNearRoute(nodes, radiusKm, limit);
+    const openSkyFlights = await this.tryOpenSkyNearRoute(
+      nodes,
+      radiusKm,
+      limit,
+    );
     if (openSkyFlights) return openSkyFlights;
 
     const adsbFlights = await this.tryAdsbLolNearRoute(nodes, radiusKm, limit);
     if (adsbFlights) return adsbFlights;
 
-    return this.emptyFallbackProvider.getFlightsNearRoute(nodes, radiusKm, limit);
+    return this.emptyFallbackProvider.getFlightsNearRoute(
+      nodes,
+      radiusKm,
+      limit,
+    );
   }
 
-  async getFlight(provider: LiveFlightProvider, flightId: string, routeContext?: RouteContext): Promise<LiveFlightDetail> {
-    if (provider === 'mock' || env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.emptyFallbackProvider.getFlight('mock', flightId, routeContext);
+  async getFlight(
+    provider: LiveFlightProvider,
+    flightId: string,
+    routeContext?: RouteContext,
+  ): Promise<LiveFlightDetail> {
+    if (provider === "mock" || env.FLIGHT_TRACKING_MODE === "mock") {
+      return this.emptyFallbackProvider.getFlight(
+        "mock",
+        flightId,
+        routeContext,
+      );
     }
 
     const flight =
-      provider === 'opensky'
+      provider === "opensky"
         ? await this.getOpenSkyFlight(flightId)
         : await this.getAdsbLolFlight(flightId);
 
     if (!flight) {
-      throw new HttpError(404, `Live flight ${flightId} was not found from ${provider}.`);
+      throw new HttpError(
+        404,
+        `Live flight ${flightId} was not found from ${provider}.`,
+      );
     }
 
     return {
@@ -64,23 +109,35 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
     };
   }
 
-  async getTrack(provider: LiveFlightProvider, flightId: string): Promise<FlightTrackResult> {
-    if (provider === 'mock' || env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.emptyFallbackProvider.getTrack('mock', flightId);
+  async getTrack(
+    provider: LiveFlightProvider,
+    flightId: string,
+  ): Promise<FlightTrackResult> {
+    if (provider === "mock" || env.FLIGHT_TRACKING_MODE === "mock") {
+      return this.emptyFallbackProvider.getTrack("mock", flightId);
     }
 
-    if (provider === 'adsblol') {
+    if (provider === "adsblol") {
       try {
-        const response = await retry(() => this.adsbLolClient.get(`/v2/trace/${flightId}`));
+        const response = await retry(() =>
+          this.adsbLolClient.get(`/v2/trace/${flightId}`),
+        );
         const points = Array.isArray(response.data?.trace)
           ? response.data.trace
               .map((item: unknown[]) => ({
                 latitude: Number(item[1]),
                 longitude: Number(item[2]),
-                altitudeMeters: typeof item[3] === 'number' ? item[3] * 0.3048 : undefined,
-                timestamp: new Date(Date.now() - Number(item[0] ?? 0) * 1000).toISOString(),
+                altitudeMeters:
+                  typeof item[3] === "number" ? item[3] * 0.3048 : undefined,
+                timestamp: new Date(
+                  Date.now() - Number(item[0] ?? 0) * 1000,
+                ).toISOString(),
               }))
-              .filter((point: { latitude: number; longitude: number }) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
+              .filter(
+                (point: { latitude: number; longitude: number }) =>
+                  Number.isFinite(point.latitude) &&
+                  Number.isFinite(point.longitude),
+              )
           : [];
 
         return {
@@ -88,7 +145,9 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
           flightId,
           points,
           available: points.length > 0,
-          message: points.length ? undefined : 'Historical track unavailable from provider.',
+          message: points.length
+            ? undefined
+            : "Historical track unavailable from provider.",
         };
       } catch {
         return unavailableTrack(provider, flightId);
@@ -98,11 +157,15 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
     return unavailableTrack(provider, flightId);
   }
 
-  private async tryOpenSkyNearRoute(nodes: RouteNode[], radiusKm: number, limit: number): Promise<ActiveFlightsResult | undefined> {
+  private async tryOpenSkyNearRoute(
+    nodes: RouteNode[],
+    radiusKm: number,
+    limit: number,
+  ): Promise<ActiveFlightsResult | undefined> {
     try {
       const bounds = routeBounds(nodes, radiusKm);
       const response = await retry(() =>
-        this.openSkyClient.get('/states/all', {
+        this.openSkyClient.get("/states/all", {
           params: {
             lamin: bounds.minLat,
             lamax: bounds.maxLat,
@@ -111,53 +174,92 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
           },
         }),
       );
-      const states = Array.isArray(response.data?.states) ? response.data.states : [];
+      const states = Array.isArray(response.data?.states)
+        ? response.data.states
+        : [];
       const flights = states
         .map(mapOpenSkyState)
-        .filter((flight: LiveFlight | undefined): flight is LiveFlight => Boolean(flight))
+        .filter((flight: LiveFlight | undefined): flight is LiveFlight =>
+          Boolean(flight),
+        )
         .slice(0, limit);
 
       if (!flights.length) return undefined;
-      metrics.recordProviderEvent('openSkySuccess');
-      return { flights, source: 'opensky', generatedAt: new Date().toISOString(), demo: false };
+      metrics.recordProviderEvent("openSkySuccess");
+      return {
+        flights,
+        source: "opensky",
+        generatedAt: new Date().toISOString(),
+        demo: false,
+      };
     } catch {
       return undefined;
     }
   }
 
-  private async tryAdsbLolNearRoute(nodes: RouteNode[], radiusKm: number, limit: number): Promise<ActiveFlightsResult | undefined> {
+  private async tryAdsbLolNearRoute(
+    nodes: RouteNode[],
+    radiusKm: number,
+    limit: number,
+  ): Promise<ActiveFlightsResult | undefined> {
     try {
       const midpoint = nodes[Math.floor(nodes.length / 2)] ?? nodes[0];
-      const radiusNm = Math.min(Math.max(Math.round(radiusKm * 0.539957), 25), 250);
-      const response = await retry(() => this.adsbLolClient.get(`/v2/point/${midpoint.lat}/${midpoint.lon}/${radiusNm}`));
+      const radiusNm = Math.min(
+        Math.max(Math.round(radiusKm * 0.539957), 25),
+        250,
+      );
+      const response = await retry(() =>
+        this.adsbLolClient.get(
+          `/v2/point/${midpoint.lat}/${midpoint.lon}/${radiusNm}`,
+        ),
+      );
       const aircraft = Array.isArray(response.data?.ac) ? response.data.ac : [];
       const flights = aircraft
         .map(mapAdsbLolAircraft)
-        .filter((flight: LiveFlight | undefined): flight is LiveFlight => Boolean(flight))
+        .filter((flight: LiveFlight | undefined): flight is LiveFlight =>
+          Boolean(flight),
+        )
         .slice(0, limit);
 
       if (!flights.length) return undefined;
-      metrics.recordProviderEvent('adsbLolSuccess');
-      return { flights, source: 'adsblol', generatedAt: new Date().toISOString(), demo: false };
+      metrics.recordProviderEvent("adsbLolSuccess");
+      return {
+        flights,
+        source: "adsblol",
+        generatedAt: new Date().toISOString(),
+        demo: false,
+      };
     } catch {
       return undefined;
     }
   }
 
-  private async getOpenSkyFlight(flightId: string): Promise<LiveFlight | undefined> {
+  private async getOpenSkyFlight(
+    flightId: string,
+  ): Promise<LiveFlight | undefined> {
     try {
-      const response = await retry(() => this.openSkyClient.get('/states/all', { params: { icao24: flightId } }));
-      const state = Array.isArray(response.data?.states) ? response.data.states[0] : undefined;
+      const response = await retry(() =>
+        this.openSkyClient.get("/states/all", { params: { icao24: flightId } }),
+      );
+      const state = Array.isArray(response.data?.states)
+        ? response.data.states[0]
+        : undefined;
       return Array.isArray(state) ? mapOpenSkyState(state) : undefined;
     } catch {
       return undefined;
     }
   }
 
-  private async getAdsbLolFlight(flightId: string): Promise<LiveFlight | undefined> {
+  private async getAdsbLolFlight(
+    flightId: string,
+  ): Promise<LiveFlight | undefined> {
     try {
-      const response = await retry(() => this.adsbLolClient.get(`/v2/hex/${flightId}`));
-      const aircraft = Array.isArray(response.data?.ac) ? response.data.ac[0] : undefined;
+      const response = await retry(() =>
+        this.adsbLolClient.get(`/v2/hex/${flightId}`),
+      );
+      const aircraft = Array.isArray(response.data?.ac)
+        ? response.data.ac[0]
+        : undefined;
       return aircraft ? mapAdsbLolAircraft(aircraft) : undefined;
     } catch {
       return undefined;
@@ -166,18 +268,38 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
 }
 
 export class EmptyFlightTrackingFallbackProvider implements FlightTrackingProvider {
-  async getFlightsNearRoute(_nodes: RouteNode[], _radiusKm: number, _limit: number): Promise<ActiveFlightsResult> {
-    metrics.recordProviderEvent('flightTrackingMockFallback');
+  async getFlightsNearRoute(
+    _nodes: RouteNode[],
+    _radiusKm: number,
+    _limit: number,
+  ): Promise<ActiveFlightsResult> {
+    metrics.recordProviderEvent("flightTrackingMockFallback");
 
-    return { flights: [], source: 'mock', generatedAt: new Date().toISOString(), demo: true };
+    return {
+      flights: [],
+      source: "mock",
+      generatedAt: new Date().toISOString(),
+      demo: true,
+    };
   }
 
-  async getFlight(_provider: LiveFlightProvider, flightId: string, routeContext?: RouteContext): Promise<LiveFlightDetail> {
-    metrics.recordProviderEvent('flightTrackingMockFallback');
-    throw new HttpError(404, `No demo flight data is configured for ${flightId}.`, { routeContext });
+  async getFlight(
+    _provider: LiveFlightProvider,
+    flightId: string,
+    routeContext?: RouteContext,
+  ): Promise<LiveFlightDetail> {
+    metrics.recordProviderEvent("flightTrackingMockFallback");
+    throw new HttpError(
+      404,
+      `No demo flight data is configured for ${flightId}.`,
+      { routeContext },
+    );
   }
 
-  async getTrack(provider: LiveFlightProvider, flightId: string): Promise<FlightTrackResult> {
+  async getTrack(
+    provider: LiveFlightProvider,
+    flightId: string,
+  ): Promise<FlightTrackResult> {
     return unavailableTrack(provider, flightId);
   }
 }
@@ -212,64 +334,98 @@ function mapOpenSkyState(state: unknown[]): LiveFlight | undefined {
     geoAltitude,
     squawk,
   ] = state;
-  if (typeof latitude !== 'number' || typeof longitude !== 'number' || typeof icao24 !== 'string') return undefined;
+  if (
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    typeof icao24 !== "string"
+  )
+    return undefined;
   return {
     id: icao24,
-    provider: 'opensky',
-    callsign: typeof callsign === 'string' ? callsign.trim() || undefined : undefined,
+    provider: "opensky",
+    callsign:
+      typeof callsign === "string" ? callsign.trim() || undefined : undefined,
     icao24,
-    originCountry: typeof originCountry === 'string' ? originCountry : undefined,
+    originCountry:
+      typeof originCountry === "string" ? originCountry : undefined,
     latitude,
     longitude,
-    altitudeMeters: typeof baroAltitude === 'number' ? baroAltitude : undefined,
-    geoAltitudeMeters: typeof geoAltitude === 'number' ? geoAltitude : undefined,
-    speedKnots: typeof velocityMps === 'number' ? velocityMps * 1.94384 : undefined,
-    headingDegrees: typeof heading === 'number' ? heading : undefined,
-    verticalRate: typeof verticalRate === 'number' ? verticalRate : undefined,
-    squawk: typeof squawk === 'string' ? squawk : undefined,
+    altitudeMeters: typeof baroAltitude === "number" ? baroAltitude : undefined,
+    geoAltitudeMeters:
+      typeof geoAltitude === "number" ? geoAltitude : undefined,
+    speedKnots:
+      typeof velocityMps === "number" ? velocityMps * 1.94384 : undefined,
+    headingDegrees: typeof heading === "number" ? heading : undefined,
+    verticalRate: typeof verticalRate === "number" ? verticalRate : undefined,
+    squawk: typeof squawk === "string" ? squawk : undefined,
     onGround: Boolean(onGround),
-    lastSeen: typeof lastContact === 'number' ? new Date(lastContact * 1000).toISOString() : new Date().toISOString(),
+    lastSeen:
+      typeof lastContact === "number"
+        ? new Date(lastContact * 1000).toISOString()
+        : new Date().toISOString(),
     sourceUpdatedAt: new Date().toISOString(),
     demo: false,
   };
 }
 
-function mapAdsbLolAircraft(aircraft: Record<string, unknown>): LiveFlight | undefined {
+function mapAdsbLolAircraft(
+  aircraft: Record<string, unknown>,
+): LiveFlight | undefined {
   const latitude = Number(aircraft.lat);
   const longitude = Number(aircraft.lon);
-  const id = String(aircraft.hex ?? '');
-  if (!id || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return undefined;
+  const id = String(aircraft.hex ?? "");
+  if (!id || !Number.isFinite(latitude) || !Number.isFinite(longitude))
+    return undefined;
 
   return {
     id,
-    provider: 'adsblol',
-    callsign: typeof aircraft.flight === 'string' ? aircraft.flight.trim() || undefined : undefined,
+    provider: "adsblol",
+    callsign:
+      typeof aircraft.flight === "string"
+        ? aircraft.flight.trim() || undefined
+        : undefined,
     icao24: id,
-    registration: typeof aircraft.r === 'string' ? aircraft.r : undefined,
-    aircraftType: typeof aircraft.t === 'string' ? aircraft.t : undefined,
-    operator: typeof aircraft.op === 'string' ? aircraft.op : undefined,
-    originCountry: typeof aircraft.country === 'string' ? aircraft.country : undefined,
+    registration: typeof aircraft.r === "string" ? aircraft.r : undefined,
+    aircraftType: typeof aircraft.t === "string" ? aircraft.t : undefined,
+    operator: typeof aircraft.op === "string" ? aircraft.op : undefined,
+    originCountry:
+      typeof aircraft.country === "string" ? aircraft.country : undefined,
     latitude,
     longitude,
-    altitudeMeters: typeof aircraft.alt_baro === 'number' ? aircraft.alt_baro * 0.3048 : undefined,
-    geoAltitudeMeters: typeof aircraft.alt_geom === 'number' ? aircraft.alt_geom * 0.3048 : undefined,
-    speedKnots: typeof aircraft.gs === 'number' ? aircraft.gs : undefined,
-    headingDegrees: typeof aircraft.track === 'number' ? aircraft.track : undefined,
-    verticalRate: typeof aircraft.baro_rate === 'number' ? aircraft.baro_rate * 0.00508 : undefined,
-    squawk: typeof aircraft.squawk === 'string' ? aircraft.squawk : undefined,
-    onGround: aircraft.alt_baro === 'ground',
-    lastSeen: new Date(Date.now() - Number(aircraft.seen ?? 0) * 1000).toISOString(),
+    altitudeMeters:
+      typeof aircraft.alt_baro === "number"
+        ? aircraft.alt_baro * 0.3048
+        : undefined,
+    geoAltitudeMeters:
+      typeof aircraft.alt_geom === "number"
+        ? aircraft.alt_geom * 0.3048
+        : undefined,
+    speedKnots: typeof aircraft.gs === "number" ? aircraft.gs : undefined,
+    headingDegrees:
+      typeof aircraft.track === "number" ? aircraft.track : undefined,
+    verticalRate:
+      typeof aircraft.baro_rate === "number"
+        ? aircraft.baro_rate * 0.00508
+        : undefined,
+    squawk: typeof aircraft.squawk === "string" ? aircraft.squawk : undefined,
+    onGround: aircraft.alt_baro === "ground",
+    lastSeen: new Date(
+      Date.now() - Number(aircraft.seen ?? 0) * 1000,
+    ).toISOString(),
     sourceUpdatedAt: new Date().toISOString(),
     demo: false,
   };
 }
 
-function unavailableTrack(provider: LiveFlightProvider, flightId: string): FlightTrackResult {
+function unavailableTrack(
+  provider: LiveFlightProvider,
+  flightId: string,
+): FlightTrackResult {
   return {
     provider,
     flightId,
     points: [],
     available: false,
-    message: 'Historical track unavailable from this provider.',
+    message: "Historical track unavailable from this provider.",
   };
 }

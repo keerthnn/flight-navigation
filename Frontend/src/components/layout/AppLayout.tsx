@@ -1,55 +1,49 @@
 import { PropsWithChildren } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Typography } from '@mui/material';
-import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
-import MenuIcon from '@mui/icons-material/Menu';
-import { useState } from 'react';
+import { AppBar, Box, Stack, Toolbar, Typography } from '@mui/material';
+import FlightIcon from '@mui/icons-material/Flight';
+import { ThemeToggle } from '../nav/ThemeToggle';
+import { ConnectionStatusDot } from '../nav/ConnectionStatusDot';
+import { useAppStore } from '../../store/appStore';
+
+function deriveStatus(providerStatus: unknown): 'live' | 'degraded' | 'offline' {
+  if (!providerStatus || typeof providerStatus !== 'object') return 'degraded';
+  const flags = Object.values(providerStatus as Record<string, unknown>);
+  if (flags.every((value) => value === false)) return 'offline';
+  if (flags.some((value) => value === true)) return 'live';
+  return 'degraded';
+}
 
 export function AppLayout({ children }: PropsWithChildren) {
-  const location = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const tabValue = location.pathname.startsWith('/flight/') ? 1 : 0;
+  const { providerStatus } = useAppStore();
+  const connectionStatus = deriveStatus(providerStatus);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="sticky" elevation={0}>
-        <Toolbar sx={{ gap: 2 }}>
-          <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' } }}>
-            <MenuIcon />
-          </IconButton>
-          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ flexGrow: 1 }}>
-            <FlightTakeoffIcon color="primary" />
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
-                Flight Intelligence
-              </Typography>
-            </Box>
+      <AppBar
+        className="nav-bar"
+        position="sticky"
+        elevation={0}
+        sx={{
+          height: 56,
+          justifyContent: 'center',
+          backdropFilter: 'blur(12px)',
+          backgroundColor: 'rgba(13,27,42,0.85)',
+          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <Toolbar sx={{ minHeight: '56px !important', display: 'flex', justifyContent: 'space-between' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FlightIcon color="primary" />
+            <Typography variant="h3" sx={{ letterSpacing: '0.05em' }}>FlightNav</Typography>
           </Stack>
-          <Tabs value={tabValue} textColor="inherit" indicatorColor="primary" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <Tab label="Route Search" component={Link} to="/" />
-            <Tab label="Flight Detail" component={Link} to={location.pathname.startsWith('/flight/') ? location.pathname : '/'} />
-          </Tabs>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <ConnectionStatusDot status={connectionStatus} />
+            <ThemeToggle />
+          </Stack>
         </Toolbar>
       </AppBar>
 
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} sx={{ display: { md: 'none' } }}>
-        <Box sx={{ width: 260, p: 2 }}>
-          <Stack spacing={1}>
-            <Button component={Link} to="/" onClick={() => setDrawerOpen(false)}>
-              Route Search
-            </Button>
-            <Button
-              component={Link}
-              to={location.pathname.startsWith('/flight/') ? location.pathname : '/'}
-              onClick={() => setDrawerOpen(false)}
-            >
-              Flight Detail
-            </Button>
-          </Stack>
-        </Box>
-      </Drawer>
-
-      <Box component="main" sx={{ p: { xs: 2, md: 3 } }}>
+      <Box component="main" sx={{ p: { xs: 1.5, md: 2.5 } }}>
         {children}
       </Box>
     </Box>

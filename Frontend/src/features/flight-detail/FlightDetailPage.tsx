@@ -1,269 +1,289 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
-  Button,
   Chip,
-  CircularProgress,
-  Grid,
+  Drawer,
+  Fab,
   Paper,
   Stack,
+  SwipeableDrawer,
   Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DownloadIcon from '@mui/icons-material/Download';
+import FlightIcon from '@mui/icons-material/Flight';
+import RadarIcon from '@mui/icons-material/Radar';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CloudIcon from '@mui/icons-material/Cloud';
+import RuleIcon from '@mui/icons-material/Rule';
+import { useFlightDetail } from '../../context/FlightDetailContext';
+import { PanelErrorBoundary } from '../../components/errors/PanelErrorBoundary';
+import { LeftPanelSkeleton, RightPanelSkeleton } from '../../components/skeletons';
+import { LeftPanel } from '../../components/panels/LeftPanel';
 import { RouteMap } from '../../components/maps/RouteMap';
-import { DEFAULT_AIRCRAFT } from '../../constants/aircraft';
-import { useAsync } from '../../hooks/useAsync';
-import { useLiveFlight } from '../../hooks/useLiveFlight';
-import { flightApi } from '../../services/api/flightApi';
-import { useAppStore } from '../../store/appStore';
-import { ActiveFlightsResult, FlightTrackResult, LiveFlight, RouteIntelligence } from '../../types/domain';
+import { Units } from '../../utils/units';
+import { Compass } from '../../components/telemetry/Compass';
+import { AltimeterStrip } from '../../components/telemetry/AltimeterStrip';
+import { PilotDecisionCard } from '../../components/panels/PilotDecisionCard';
 import { getFlightStableId } from '../../utils/flightIdentity';
-import { formatNumber, riskLabel } from '../../utils/format';
 
-export default function FlightDetailPage() {
-  const { id } = useParams();
-  const { data, error, loading, run } = useAsync<RouteIntelligence>();
-  const activeFlights = useAsync<ActiveFlightsResult>();
-  const selectedFlightDetail = useAsync<FlightTrackResult>();
-  const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
-  const [selectedFlightSnapshot, setSelectedFlightSnapshot] = useState<LiveFlight>();
-  const [selectedMissingSince, setSelectedMissingSince] = useState<number | null>(null);
-  const [detailTab, setDetailTab] = useState(0);
-  const flights = activeFlights.data?.flights ?? [];
-  const selectedFromList = selectedFlightId ? flights.find((flight) => getFlightStableId(flight) === selectedFlightId) : undefined;
-  const selectedFlight = selectedFromList ?? selectedFlightSnapshot;
-  const liveFlight = useLiveFlight(selectedFlight?.provider, selectedFlight?.id, id);
-  const selectedFlightForUi = liveFlight.detail?.flight ?? selectedFlight;
-  const selectedStableId = selectedFlightForUi ? getFlightStableId(selectedFlightForUi) : null;
-  const store = useAppStore();
+function OperationsContent({ activeTab }: { activeTab: 1 | 2 | 3 }) {
+  const detail = useFlightDetail();
+  if (!detail.intelligence) return null;
 
-  const metrics = useMemo(() => {
-    if (!data) return [];
-    return [
-      { label: 'Distance', value: `${formatNumber(data.flight.distance)} km` },
-      { label: 'Route Risk', value: `${data.routeWeight.toFixed(1)} / 10` },
-      { label: 'Fuel', value: `${formatNumber(data.fuel.fuelKg)} kg` },
-      { label: 'CO2', value: `${formatNumber(data.fuel.co2Kg)} kg` },
-    ];
-  }, [data]);
+  const selected = detail.liveFlight;
+  const altitudeFt = selected?.altitudeMeters ? Units.metersToFeet(selected.altitudeMeters) : 0;
 
-  const selectFlight = (flight: LiveFlight) => {
-    const stableId = getFlightStableId(flight);
-    setSelectedFlightId(stableId);
-    setSelectedFlightSnapshot(flight);
-    setSelectedMissingSince(null);
-  };
-
-  useEffect(() => {
-    if (id) {
-      store.setActiveRoute(id);
-      void run(() => flightApi.getRouteIntelligence(id, DEFAULT_AIRCRAFT));
-      void activeFlights.run(() => flightApi.getActiveFlights(id));
-    }
-  }, [activeFlights.run, id, run, store.setActiveRoute]);
-
-  useEffect(() => {
-    if (!selectedFlightId) {
-      setSelectedFlightSnapshot(undefined);
-      setSelectedMissingSince(null);
-      return;
-    }
-
-    if (selectedFromList) {
-      setSelectedFlightSnapshot(selectedFromList);
-      setSelectedMissingSince(null);
-      return;
-    }
-
-    setSelectedMissingSince((value) => value ?? Date.now());
-  }, [selectedFlightId, selectedFromList]);
-
-  useEffect(() => {
-    if (!selectedFlightId || selectedFromList || selectedMissingSince === null) return;
-    const timeoutRemaining = Math.max(30_000 - (Date.now() - selectedMissingSince), 0);
-    const timer = window.setTimeout(() => {
-      setSelectedFlightId(null);
-      setSelectedFlightSnapshot(undefined);
-      setSelectedMissingSince(null);
-    }, timeoutRemaining);
-    return () => window.clearTimeout(timer);
-  }, [selectedFlightId, selectedFromList, selectedMissingSince]);
-
-  useEffect(() => {
-    if (selectedFlightForUi) {
-      void selectedFlightDetail.run(() => flightApi.getFlightTrack(selectedFlightForUi.provider, selectedFlightForUi.id));
-    }
-  }, [selectedFlightDetail.run, selectedFlightForUi]);
-
-  useEffect(() => {
-    flightApi.getProviders().then(store.setProviderStatus).catch(() => undefined);
-  }, [store.setProviderStatus]);
-
-  function exportSummary() {
-    if (!data) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${data.flight.id}-route-intelligence.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  if (loading) {
+  if (activeTab === 1) {
     return (
-      <Stack direction="row" spacing={1} alignItems="center">
-        <CircularProgress size={20} />
-        <Typography>Loading route intelligence...</Typography>
+      <Stack spacing={1.2} sx={{ mt: 1 }}>
+        <Stack spacing={0.2}>
+          <Typography variant="caption" color="text.secondary">Selected Aircraft</Typography>
+          <Typography variant="numeric" sx={{ fontSize: 22 }}>{selected?.callsign ?? 'Select flight from traffic list'}</Typography>
+          <Typography variant="caption" color="text.secondary">Provider: {selected?.provider ?? '-'} · Last {selected?.lastSeen ? Units.formatUtcTime(selected.lastSeen) : '-'}</Typography>
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="stretch">
+          <Compass heading={selected?.headingDegrees ?? 0} />
+          <Paper sx={{ p: 1, flex: 1, bgcolor: 'background.surface', display: 'grid', alignContent: 'center' }}>
+            <Typography variant="caption">Ground Speed</Typography>
+            <Typography variant="numeric" sx={{ fontSize: 28 }}>{Math.round(selected?.speedKnots ?? 0)} kt</Typography>
+            <Typography variant="caption" color="text.secondary">Heading {Math.round(selected?.headingDegrees ?? 0)} deg</Typography>
+          </Paper>
+          <AltimeterStrip altitudeFt={altitudeFt} />
+        </Stack>
       </Stack>
     );
   }
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!data) return <Alert severity="info">Route not found.</Alert>;
+
+  if (activeTab === 2) {
+    return (
+      <Stack spacing={0.8} sx={{ mt: 1, maxHeight: 280, overflow: 'auto' }}>
+        {detail.intelligence.weather.map((point) => (
+          <Paper key={point.ident} sx={{ p: 1, borderLeft: '4px solid', borderColor: point.visibilityMeters / 1000 < 1.6 ? 'error.main' : point.visibilityMeters / 1000 < 3 ? 'warning.main' : point.visibilityMeters / 1000 < 5 ? 'info.main' : 'success.main' }}>
+            <Typography variant="numeric">{point.ident}</Typography>
+            <Typography variant="caption" sx={{ display: 'block' }}>{point.description}</Typography>
+            <Typography variant="caption" color="text.secondary">Wind {Units.msToKnots(point.windSpeedMps)} kt · Vis {(point.visibilityMeters / 1000).toFixed(1)} km</Typography>
+          </Paper>
+        ))}
+      </Stack>
+    );
+  }
 
   return (
-    <Grid container spacing={2}>
-      <Grid size={{ xs: 12, xl: 3 }}>
-        <Paper sx={{ p: 2, height: '100%' }}>
-          <Stack spacing={2}>
-            <Button component={Link} to="/" startIcon={<ArrowBackIcon />} variant="outlined">
-              Back to Routes
-            </Button>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {data.flight.fromICAO} to {data.flight.toICAO}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {data.flight.fromName} to {data.flight.toName}
-            </Typography>
-            <Chip label={riskLabel(data.routeWeight)} color={data.routeWeight > 6 ? 'warning' : 'primary'} />
-            <Grid container spacing={1}>
-              {metrics.map((metric) => (
-                <Grid size={6} key={metric.label}>
-                  <Paper variant="outlined" sx={{ p: 1.25 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {metric.label}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {metric.value}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-            <Button variant="contained" startIcon={<DownloadIcon />} onClick={exportSummary}>
-              Export JSON
-            </Button>
-          </Stack>
-        </Paper>
-      </Grid>
+    <PilotDecisionCard
+      decision={detail.pilotDecision}
+      intelligence={detail.intelligence}
+      sunriseSunset={detail.sunriseSunset}
+      flightId={detail.intelligence.flight.id}
+    />
+  );
+}
 
-      <Grid size={{ xs: 12, xl: 6 }}>
-        <Paper sx={{ p: 1.5 }}>
-          <Typography variant="h6" sx={{ px: 1, pb: 1, fontWeight: 700 }}>
-            2D Route and Live Traffic
-          </Typography>
-          <Box className="map-shell">
-            <RouteMap
-              nodes={data.flight.route.nodes}
-              activeFlights={activeFlights.data?.flights}
-              selectedFlight={selectedFlightForUi}
-              trackPoints={selectedFlightDetail.data?.points}
-              onSelectFlight={selectFlight}
-            />
+function RightPanel({ tabOverride }: { tabOverride?: 0 | 1 | 2 | 3 }) {
+  const detail = useFlightDetail();
+  const [tab, setTab] = useState(0);
+
+  if (detail.intelligenceLoading) return <RightPanelSkeleton />;
+  if (!detail.intelligence) return <Alert severity="info">Route not found.</Alert>;
+
+  const activeTab = tabOverride ?? tab;
+
+  return (
+    <Stack spacing={1.2} sx={{ animation: 'slide-from-right var(--anim-slow) forwards' }}>
+      {activeTab === 0 ? (
+        <Paper sx={{ p: 1.2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h3">Traffic Near Corridor</Typography>
+            <Chip size="small" label={`${detail.activeFlights.length} aircraft`} />
+          </Stack>
+          <Typography variant="caption" color="text.secondary" role="status" aria-live="polite">Updated {detail.activeFlightsFreshnessMs !== null ? `${Math.round(detail.activeFlightsFreshnessMs / 1000)}s ago` : '-'}</Typography>
+
+          <TableContainer sx={{ maxHeight: 260, mt: 0.8 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Callsign</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Alt</TableCell>
+                  <TableCell>Speed</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {detail.activeFlights.map((flight) => {
+                  const selectedRow = detail.selectedFlightId === getFlightStableId(flight);
+                  const ft = flight.altitudeMeters ? Units.metersToFeet(flight.altitudeMeters) : 0;
+                  return (
+                    <TableRow
+                      key={getFlightStableId(flight)}
+                      hover
+                      selected={selectedRow}
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => detail.setSelectedFlightId(getFlightStableId(flight))}
+                    >
+                      <TableCell sx={{ fontFamily: 'JetBrains Mono, monospace' }}>{flight.callsign ?? flight.id}</TableCell>
+                      <TableCell>{flight.aircraftType ?? '-'}</TableCell>
+                      <TableCell sx={{ color: ft < 10000 ? 'warning.main' : ft > 28000 ? 'success.main' : 'info.main', fontFamily: 'JetBrains Mono, monospace' }}>{ft}</TableCell>
+                      <TableCell sx={{ fontFamily: 'JetBrains Mono, monospace' }}>{Math.round(flight.speedKnots ?? 0)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      ) : null}
+
+      {activeTab !== 0 || tabOverride === undefined ? (
+        <Paper sx={{ p: 1.2 }}>
+          {tabOverride === undefined ? (
+          <Tabs className="right-panel-tabs" value={tab} onChange={(_, value) => setTab(value)} variant="fullWidth">
+            <Tab icon={<TimelineIcon />} label="Telemetry" />
+            <Tab icon={<CloudIcon />} label="Weather" />
+            <Tab icon={<RuleIcon />} label="Decision" />
+          </Tabs>
+          ) : null}
+
+          {activeTab !== 0 ? <OperationsContent activeTab={activeTab as 1 | 2 | 3} /> : null}
+        </Paper>
+      ) : null}
+    </Stack>
+  );
+}
+
+function DesktopRightPanel() {
+  const [tab, setTab] = useState(1);
+  return (
+    <Stack spacing={1.2} sx={{ animation: 'slide-from-right var(--anim-slow) forwards' }}>
+      <RightPanel tabOverride={0} />
+      <Paper sx={{ p: 1.2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h3">Operations</Typography>
+        </Stack>
+        <Tabs className="right-panel-tabs" value={tab} onChange={(_, value) => setTab(value)} variant="fullWidth" sx={{ mt: 1 }}>
+          <Tab icon={<TimelineIcon />} label="Telemetry" />
+          <Tab icon={<CloudIcon />} label="Weather" />
+          <Tab icon={<RuleIcon />} label="Decision" />
+        </Tabs>
+        <OperationsContent activeTab={(tab + 1) as 1 | 2 | 3} />
+      </Paper>
+    </Stack>
+  );
+}
+
+function LeftPanelSlot() {
+  const detail = useFlightDetail();
+  if (detail.intelligenceLoading) return <LeftPanelSkeleton />;
+  if (detail.intelligenceError || !detail.intelligence) return <Alert severity="error">{detail.intelligenceError ?? 'Route not found'}</Alert>;
+
+  return (
+    <LeftPanel
+      intelligence={detail.intelligence}
+      midpointWeather={detail.midpointWeather}
+      sunriseSunset={detail.sunriseSunset}
+      pilotDecision={detail.pilotDecision}
+      selectedWaypointIndex={detail.selectedWaypointIndex}
+      onSelectWaypointIndex={(index) => detail.setSelectedWaypointIndex(index)}
+    />
+  );
+}
+
+export default function FlightDetailPage() {
+  const detail = useFlightDetail();
+  const theme = useTheme();
+  const lt1400 = useMediaQuery(theme.breakpoints.down(1400));
+  const lt1100 = useMediaQuery(theme.breakpoints.down(1100));
+  const lt900 = useMediaQuery(theme.breakpoints.down(900));
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState(0);
+
+  const mapPanel = useMemo(() => (
+    <Paper sx={{ p: 1, height: '100%', animation: 'fade-in var(--anim-slow) forwards' }}>
+      {detail.intelligence ? (
+        <RouteMap
+          nodes={detail.intelligence.flight.route.nodes}
+          activeFlights={detail.activeFlights}
+          selectedFlight={detail.liveFlight ?? undefined}
+          onSelectFlight={(flight) => detail.setSelectedFlightId(getFlightStableId(flight))}
+          selectedWaypointIndex={detail.selectedWaypointIndex}
+          onSelectWaypoint={(index) => detail.setSelectedWaypointIndex(index)}
+        />
+      ) : null}
+    </Paper>
+  ), [detail]);
+
+  if (lt900) {
+    return (
+      <Stack spacing={1.2}>
+        <Box sx={{ height: '45vh' }}>{mapPanel}</Box>
+        <Tabs value={mobileTab} onChange={(_, value) => setMobileTab(value)}>
+          <Tab label="Intelligence" />
+          <Tab label="Traffic" />
+          <Tab label="Telemetry" />
+          <Tab label="Decision" />
+        </Tabs>
+        {mobileTab === 0 ? <LeftPanelSlot /> : null}
+        {mobileTab === 1 ? <RightPanel tabOverride={0} /> : null}
+        {mobileTab === 2 ? <RightPanel tabOverride={1} /> : null}
+        {mobileTab === 3 ? <RightPanel tabOverride={3} /> : null}
+      </Stack>
+    );
+  }
+
+  return (
+    <>
+      <Box
+        sx={{
+          height: 'calc(100vh - 88px)',
+          overflow: 'hidden',
+          display: 'grid',
+          gap: 1.2,
+          gridTemplateColumns: !lt1400 ? '300px 1fr 340px' : '1fr 340px',
+        }}
+      >
+        {!lt1400 ? (
+          <Box sx={{ height: '100%', overflowY: 'auto' }}>
+            <PanelErrorBoundary panelName="Route Intelligence"><LeftPanelSlot /></PanelErrorBoundary>
           </Box>
-        </Paper>
-      </Grid>
+        ) : null}
 
-      <Grid size={{ xs: 12, xl: 3 }}>
-        <Paper sx={{ p: 2, height: '100%' }}>
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Active Flights
-              </Typography>
-              <Typography variant="caption" color="text.secondary">{liveFlight.status === 'live' ? 'Live' : 'Fallback'}</Typography>
-            </Stack>
-            {activeFlights.loading ? <CircularProgress size={18} /> : null}
-            {activeFlights.error ? <Alert severity="warning">{activeFlights.error}</Alert> : null}
+        <Box sx={{ height: '100%', minWidth: 0 }}>
+          <PanelErrorBoundary panelName="Map">{mapPanel}</PanelErrorBoundary>
+        </Box>
 
-            <TableContainer sx={{ maxHeight: 260 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Callsign</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell align="right">Alt (m)</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {flights.map((flight) => {
-                    const stableId = getFlightStableId(flight);
-                    const isSelected = selectedStableId === stableId;
-                    return (
-                      <TableRow
-                        key={stableId}
-                        hover
-                        selected={isSelected}
-                        onClick={() => selectFlight(flight)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2">{flight.callsign ?? flight.id}</Typography>
-                            {flight.demo ? <Chip size="small" label="Demo" color="warning" /> : null}
-                          </Stack>
-                        </TableCell>
-                        <TableCell>{flight.aircraftType ?? 'Unknown'}</TableCell>
-                        <TableCell align="right">{formatNumber(flight.altitudeMeters ?? 0)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+        {!lt1100 ? (
+          <Box sx={{ height: '100%', overflowY: 'auto' }}>
+            <PanelErrorBoundary panelName="Live Operations"><DesktopRightPanel /></PanelErrorBoundary>
+          </Box>
+        ) : null}
+      </Box>
 
-            <Tabs value={detailTab} onChange={(_, value) => setDetailTab(value)} variant="fullWidth">
-              <Tab label="Telemetry" />
-              <Tab label="Weather" />
-            </Tabs>
-            {detailTab === 0 ? (
-              <Stack spacing={0.5}>
-                <Typography variant="body2">Provider: {selectedFlightForUi?.provider ?? '-'}</Typography>
-                <Typography variant="body2">Callsign: {selectedFlightForUi?.callsign ?? selectedFlightForUi?.id ?? '-'}</Typography>
-                <Typography variant="body2">Speed: {formatNumber(selectedFlightForUi?.speedKnots ?? 0)} kt</Typography>
-                <Typography variant="body2">Heading: {formatNumber(selectedFlightForUi?.headingDegrees ?? 0)} deg</Typography>
-                <Typography variant="body2">
-                  Track: {selectedFlightDetail.data?.available ? `${selectedFlightDetail.data.points.length} points` : 'Unavailable'}
-                </Typography>
-              </Stack>
-            ) : (
-              <Stack spacing={1}>
-                {data.weather.slice(0, 5).map((point) => (
-                  <Paper key={point.ident} variant="outlined" sx={{ p: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {point.ident}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {point.description}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        </Paper>
-      </Grid>
-    </Grid>
+      {lt1400 ? (
+        <>
+          <Fab aria-label="Open route intelligence panel" color="primary" sx={{ position: 'fixed', left: 20, bottom: 20 }} onClick={() => setLeftOpen(true)}><FlightIcon /></Fab>
+          <Drawer anchor="left" open={leftOpen} onClose={() => setLeftOpen(false)}>
+            <Box sx={{ width: 300, p: 1.2 }}><LeftPanelSlot /></Box>
+          </Drawer>
+        </>
+      ) : null}
+
+      {lt1100 ? (
+        <>
+          <Fab aria-label="Open live operations panel" color="secondary" sx={{ position: 'fixed', right: 20, bottom: 20 }} onClick={() => setRightOpen(true)}><RadarIcon /></Fab>
+          <SwipeableDrawer anchor="bottom" open={rightOpen} onClose={() => setRightOpen(false)} onOpen={() => setRightOpen(true)}>
+            <Box sx={{ height: '60vh', p: 1 }}><RightPanel /></Box>
+          </SwipeableDrawer>
+        </>
+      ) : null}
+    </>
   );
 }

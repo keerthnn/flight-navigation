@@ -1,8 +1,9 @@
-import { Autocomplete, CircularProgress, TextField } from '@mui/material';
+import { Autocomplete, Box, CircularProgress, Stack, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Airport } from '../../types/domain';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { flightApi } from '../../services/api/flightApi';
+import { Airport } from '../../types/domain';
+import { Units } from '../../utils/units';
 
 interface AirportAutocompleteProps {
   label: string;
@@ -29,29 +30,13 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
     }
 
     setLoading(true);
-    flightApi
-      .searchAirports(debouncedQuery)
-      .then((airports) => {
-        if (!cancelled) setResults(airports);
-      })
-      .catch(() => {
-        if (!cancelled) setResults([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    flightApi.searchAirports(debouncedQuery)
+      .then((airports) => { if (!cancelled) setResults(airports); })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [debouncedQuery, value?.name]);
-
-  function selectAirport(airport: Airport | null) {
-    if (!airport) return;
-    onSelect(airport);
-    setQuery(airport.name);
-    setResults([]);
-  }
 
   return (
     <Autocomplete
@@ -60,7 +45,7 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
       loading={loading}
       filterOptions={(options) => options}
       getOptionLabel={(option) => `${option.icao} · ${option.name}`}
-      onChange={(_, next) => selectAirport(next)}
+      onChange={(_, next) => next && onSelect(next)}
       onInputChange={(_, inputValue) => setQuery(inputValue)}
       renderInput={(params) => (
         <TextField
@@ -79,9 +64,18 @@ export function AirportAutocomplete({ label, placeholder, value, onSelect }: Air
         />
       )}
       renderOption={(props, option) => (
-        <li {...props} key={option.icao}>
-          {option.icao} · {option.name} · {option.regionName}, {option.countryCode}
-        </li>
+        <Box component="li" {...props} key={option.icao} sx={{ width: '100%' }}>
+          <Stack spacing={0.4} sx={{ width: '100%' }}>
+            <Stack direction="row" spacing={0.8} alignItems="center">
+              <Typography sx={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, px: 0.7, borderRadius: 0.5, bgcolor: 'primary.main', color: '#fff' }}>{option.icao}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{option.name}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="caption" color="text.secondary">{option.regionName}, {option.countryCode}</Typography>
+              <Typography variant="caption" sx={{ fontFamily: 'JetBrains Mono, monospace' }}>Elev {Units.metersToFeet(0)} ft</Typography>
+            </Stack>
+          </Stack>
+        </Box>
       )}
     />
   );
