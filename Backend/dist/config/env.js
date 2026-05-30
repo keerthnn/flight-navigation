@@ -22,10 +22,6 @@ const envSchema = zod_1.z.object({
     CACHE_TTL_SECONDS: zod_1.z.coerce.number().int().positive().default(300),
     RATE_LIMIT_WINDOW_MS: zod_1.z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_MAX: zod_1.z.coerce.number().int().positive().default(120),
-    MOCK_PROVIDERS: zod_1.z
-        .string()
-        .optional()
-        .transform((value) => value === 'true'),
 });
 exports.env = envSchema.parse(process.env);
 exports.corsOrigins = exports.env.CORS_ORIGINS.split(',')

@@ -18,10 +18,6 @@ const envSchema = z.object({
   CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
-  MOCK_PROVIDERS: z
-    .string()
-    .optional()
-    .transform((value) => value === 'true'),
 });
 
 export const env = envSchema.parse(process.env);

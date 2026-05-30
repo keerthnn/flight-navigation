@@ -7,7 +7,7 @@ Production-style aviation route planning dashboard built with React, Vite, TypeS
 - Feature-based React architecture with a reusable design system, dashboard layout, typed API layer, route-level code splitting, dark/light theme, loading states, empty states, and accessible airport autocomplete.
 - Modular Express backend with controllers, services, providers, repositories, validation, caching, retry, rate limiting, structured logging, CORS, health checks, WebSocket simulation, monitoring metrics, and centralized error handling.
 - Safe provider strategy: live-free APIs where possible, optional keyed integrations, deterministic fallbacks for demos, and no browser-exposed API keys.
-- Interview-ready engineering practices: tests, TypeScript, Docker, CI workflow, API integration guide, deployment notes, and scaling roadmap.
+- Interview-ready engineering practices: TypeScript, Docker, CI workflow, API integration guide, deployment notes, and scaling roadmap.
 
 ## Quick Start
 
@@ -40,17 +40,17 @@ Open `http://localhost:5173`. The backend runs on `http://localhost:5001`.
 
 1. The browser talks only to the backend API and WebSocket gateway; no third-party secrets or provider URLs are embedded in feature code.
 2. The backend uses provider interfaces for flight plans, weather, airports, and fuel so deprecated or paid APIs can be replaced without rewriting controllers or UI.
-3. Deterministic fallback providers keep demos stable when live-free APIs are rate-limited, unavailable, or require future keys.
+3. Provider fallbacks keep the app stable when live-free APIs are rate-limited, unavailable, or require future keys.
 4. Active flight tracking is isolated behind backend providers so the app can use free live networks without coupling React to third-party APIs.
 5. Monitoring endpoints expose cache, provider fallback, HTTP request, and WebSocket counters for production-readiness conversations.
 6. The frontend uses feature modules, shared UI primitives, a typed store, lazy-loaded pages, and a live-flight socket hook with polling fallback.
-7. CI validates type safety, tests, builds, audit checks, and Playwright route-flow coverage.
+7. CI validates type safety, builds, and audit checks.
 
 ## Validation
 
 ```sh
-cd Backend && npm run typecheck && npm test && npm run build
-cd Frontend && npm run typecheck && npm test && npm run build
+cd Backend && npm run typecheck && npm run build
+cd Frontend && npm run typecheck && npm run build
 ```
 
 ## Documentation

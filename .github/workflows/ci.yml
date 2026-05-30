@@ -20,7 +20,6 @@ jobs:
           cache-dependency-path: Backend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
       - run: npm run build
       - run: npm audit --audit-level=moderate
 
@@ -38,8 +37,5 @@ jobs:
           cache-dependency-path: Frontend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
       - run: npm run build
       - run: npm audit --audit-level=moderate
-      - run: npx playwright install --with-deps chromium
-      - run: npm run e2e

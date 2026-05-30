@@ -10,6 +10,7 @@ import {
   RouteContext,
   RouteNode,
 } from '../types/domain';
+import { HttpError } from '../utils/httpError';
 import { retry } from '../utils/retry';
 
 export interface FlightTrackingProvider {
@@ -21,7 +22,7 @@ export interface FlightTrackingProvider {
 export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
   private readonly openSkyClient: AxiosInstance;
   private readonly adsbLolClient: AxiosInstance;
-  private readonly mockProvider = new MockFlightTrackingProvider();
+  private readonly emptyFallbackProvider = new EmptyFlightTrackingFallbackProvider();
 
   constructor() {
     this.openSkyClient = axios.create({ baseURL: env.OPENSKY_BASE_URL, timeout: 6000 });
@@ -30,7 +31,7 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
 
   async getFlightsNearRoute(nodes: RouteNode[], radiusKm: number, limit: number): Promise<ActiveFlightsResult> {
     if (env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.mockProvider.getFlightsNearRoute(nodes, radiusKm, limit);
+      return this.emptyFallbackProvider.getFlightsNearRoute(nodes, radiusKm, limit);
     }
 
     const openSkyFlights = await this.tryOpenSkyNearRoute(nodes, radiusKm, limit);
@@ -39,12 +40,12 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
     const adsbFlights = await this.tryAdsbLolNearRoute(nodes, radiusKm, limit);
     if (adsbFlights) return adsbFlights;
 
-    return this.mockProvider.getFlightsNearRoute(nodes, radiusKm, limit);
+    return this.emptyFallbackProvider.getFlightsNearRoute(nodes, radiusKm, limit);
   }
 
   async getFlight(provider: LiveFlightProvider, flightId: string, routeContext?: RouteContext): Promise<LiveFlightDetail> {
     if (provider === 'mock' || env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.mockProvider.getFlight('mock', flightId, routeContext);
+      return this.emptyFallbackProvider.getFlight('mock', flightId, routeContext);
     }
 
     const flight =
@@ -52,7 +53,9 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
         ? await this.getOpenSkyFlight(flightId)
         : await this.getAdsbLolFlight(flightId);
 
-    if (!flight) return this.mockProvider.getFlight('mock', flightId, routeContext);
+    if (!flight) {
+      throw new HttpError(404, `Live flight ${flightId} was not found from ${provider}.`);
+    }
 
     return {
       flight,
@@ -63,7 +66,7 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
 
   async getTrack(provider: LiveFlightProvider, flightId: string): Promise<FlightTrackResult> {
     if (provider === 'mock' || env.FLIGHT_TRACKING_MODE === 'mock') {
-      return this.mockProvider.getTrack('mock', flightId);
+      return this.emptyFallbackProvider.getTrack('mock', flightId);
     }
 
     if (provider === 'adsblol') {
@@ -162,58 +165,20 @@ export class CompositeFlightTrackingProvider implements FlightTrackingProvider {
   }
 }
 
-export class MockFlightTrackingProvider implements FlightTrackingProvider {
-  async getFlightsNearRoute(nodes: RouteNode[], _radiusKm: number, limit: number): Promise<ActiveFlightsResult> {
+export class EmptyFlightTrackingFallbackProvider implements FlightTrackingProvider {
+  async getFlightsNearRoute(_nodes: RouteNode[], _radiusKm: number, _limit: number): Promise<ActiveFlightsResult> {
     metrics.recordProviderEvent('flightTrackingMockFallback');
-    const generated = nodes.slice(0, Math.max(1, Math.min(limit, 8))).map((node, index) => mockFlightFromNode(node, index));
 
-    return { flights: generated, source: 'mock', generatedAt: new Date().toISOString(), demo: true };
+    return { flights: [], source: 'mock', generatedAt: new Date().toISOString(), demo: true };
   }
 
   async getFlight(_provider: LiveFlightProvider, flightId: string, routeContext?: RouteContext): Promise<LiveFlightDetail> {
     metrics.recordProviderEvent('flightTrackingMockFallback');
-    const index = Number(flightId.match(/(\d+)$/)?.[1] ?? 0);
-    return {
-      flight: {
-        id: flightId,
-        provider: 'mock',
-        callsign: `DEMO${100 + index}`,
-        icao24: flightId.replace('mock-', '').slice(0, 6).toLowerCase(),
-        registration: `VT-D${index}MO`,
-        aircraftType: index % 2 ? 'B738' : 'A320',
-        operator: 'Demo Air',
-        originCountry: 'Demo Network',
-        latitude: 20 + index,
-        longitude: 77 + index * 0.1,
-        altitudeMeters: 9000 + index * 300,
-        geoAltitudeMeters: 9200 + index * 300,
-        speedKnots: 430 + index * 8,
-        headingDegrees: 120 + index * 12,
-        verticalRate: index % 2 ? -1.2 : 0.8,
-        squawk: '1200',
-        onGround: false,
-        lastSeen: new Date().toISOString(),
-        sourceUpdatedAt: new Date().toISOString(),
-        demo: true,
-      },
-      routeContext,
-      generatedAt: new Date().toISOString(),
-    };
+    throw new HttpError(404, `No demo flight data is configured for ${flightId}.`, { routeContext });
   }
 
   async getTrack(provider: LiveFlightProvider, flightId: string): Promise<FlightTrackResult> {
-    const base = await this.getFlight(provider, flightId);
-    return {
-      provider: 'mock',
-      flightId,
-      available: true,
-      points: [0, 1, 2, 3].map((offset) => ({
-        latitude: base.flight.latitude - 0.4 + offset * 0.12,
-        longitude: base.flight.longitude - 0.4 + offset * 0.12,
-        altitudeMeters: (base.flight.altitudeMeters ?? 9000) - 300 + offset * 80,
-        timestamp: new Date(Date.now() - (4 - offset) * 60_000).toISOString(),
-      })),
-    };
+    return unavailableTrack(provider, flightId);
   }
 }
 
@@ -296,31 +261,6 @@ function mapAdsbLolAircraft(aircraft: Record<string, unknown>): LiveFlight | und
     lastSeen: new Date(Date.now() - Number(aircraft.seen ?? 0) * 1000).toISOString(),
     sourceUpdatedAt: new Date().toISOString(),
     demo: false,
-  };
-}
-
-function mockFlightFromNode(node: RouteNode, index: number): LiveFlight {
-  return {
-    id: `mock-${node.ident}-${index}`,
-    provider: 'mock',
-    callsign: `DEMO${100 + index}`,
-    icao24: `demo${index}`,
-    registration: `VT-D${index}MO`,
-    aircraftType: index % 2 ? 'B738' : 'A320',
-    operator: 'Demo Air',
-    originCountry: 'Demo Network',
-    latitude: node.lat + 0.35 + index * 0.05,
-    longitude: node.lon - 0.35 + index * 0.04,
-    altitudeMeters: 9000 + index * 300,
-    geoAltitudeMeters: 9200 + index * 300,
-    speedKnots: 418 + index * 8,
-    headingDegrees: 120 + index * 12,
-    verticalRate: index % 2 ? -1.2 : 0.8,
-    squawk: '1200',
-    onGround: false,
-    lastSeen: new Date().toISOString(),
-    sourceUpdatedAt: new Date().toISOString(),
-    demo: true,
   };
 }
 

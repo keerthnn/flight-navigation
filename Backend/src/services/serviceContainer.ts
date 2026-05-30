@@ -1,13 +1,6 @@
 import { FlightController } from '../controllers/flightController';
-import { env } from '../config/env';
-import {
-  createMockFlightPlanProvider,
-  createMockFuelProvider,
-  createMockWeatherProvider,
-  MockAirportRepository,
-} from '../mocks/mockProviders';
 import { FlightPlanDatabaseProvider, GeneratedFlightPlanProvider } from '../providers/flightPlanProvider';
-import { CompositeFlightTrackingProvider, MockFlightTrackingProvider } from '../providers/flightTrackingProvider';
+import { CompositeFlightTrackingProvider } from '../providers/flightTrackingProvider';
 import { LocalFuelProvider } from '../providers/fuelProvider';
 import { CompositeWeatherProvider } from '../providers/weatherProvider';
 import { AirportRepository } from '../repositories/airportRepository';
@@ -19,21 +12,6 @@ export interface ServiceContainer {
 }
 
 export function createServiceContainer(): ServiceContainer {
-  if (env.MOCK_PROVIDERS) {
-    const airports = new MockAirportRepository();
-    const flightService = new FlightService(
-      airports,
-      createMockFlightPlanProvider(),
-      createMockWeatherProvider(),
-      createMockFuelProvider(),
-      new MockFlightTrackingProvider(),
-    );
-    return {
-      flightService,
-      flightController: new FlightController(flightService),
-    };
-  }
-
   const airports = new AirportRepository();
   const generatedFlightPlans = new GeneratedFlightPlanProvider(airports);
   const flightPlans = new FlightPlanDatabaseProvider(generatedFlightPlans);

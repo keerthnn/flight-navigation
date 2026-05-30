@@ -8,8 +8,6 @@ Current adapter: `Backend/src/providers/flightPlanProvider.ts`.
 - Env: `FLIGHT_PLAN_DB_API_KEY`, `FLIGHT_PLAN_DB_BASE_URL`.
 - Fallback: generated great-circle routes between seeded airports.
 - Security: key is sent only from the backend using Basic auth.
-- Mocking: use `Backend/src/mocks/mockProviders.ts` to test provider contracts without live calls.
-- Local/CI deterministic mode: set `MOCK_PROVIDERS=true` in the backend environment.
 - Scalability: cache route search and details; add provider-specific circuit breakers before production traffic.
 
 ## Aviation Weather
@@ -30,7 +28,7 @@ Current repository: `Backend/src/repositories/airportRepository.ts`.
 - Seed source: bundled `Frontend/public/iata-icao.csv`.
 - Recommended production source: nightly OurAirports CSV import.
 - Future improvement: scheduled job to refresh airport data into Postgres or Redis search.
-- Mocking: `MockAirportRepository` supplies stable airport data for tests.
+- Local data: the bundled CSV keeps airport search usable without a database.
 
 ## Fuel
 
@@ -58,7 +56,7 @@ Current live flight provider: `Backend/src/providers/flightTrackingProvider.ts`.
 - Selected flight detail: `GET /api/flights/:provider/:flightId?routeId=<routeId>`.
 - Track endpoint: `GET /api/flights/:provider/:flightId/track`.
 - Live stream: `WS /ws/flights/:provider/:flightId/live?routeId=<routeId>`.
-- Provider order: OpenSky `/states/all` bounding box, ADSB.lol `/v2/point/{lat}/{lon}/{radius}`, then mock traffic.
+- Provider order: OpenSky `/states/all` bounding box, ADSB.lol `/v2/point/{lat}/{lon}/{radius}`, then an empty demo-labeled fallback response.
 - Env: `OPENSKY_BASE_URL`, `ADSB_LOL_BASE_URL`, `FLIGHT_TRACKING_MODE=auto|mock`.
 - OpenSky terms: free REST use is intended for non-profit research/education; operational or commercial use requires a written license.
 - ADSB.lol terms: free/open-source API, but production users should contact the project and future API keys may be required.
@@ -74,8 +72,6 @@ No live route-optimization provider is hardcoded.
 - Free/open-source options to evaluate: self-hosted GraphHopper, OSRM, or Valhalla.
 - Avoid depending on public demo routing servers for production traffic.
 
-## Mocking
+## Local Development Without Keys
 
-- Backend provider fallbacks keep the app usable without external keys.
-- Frontend tests should mock `services/api/flightApi`.
-- Backend provider contract tests should mock HTTP responses and never hit live providers in CI.
+Backend provider fallbacks keep the app usable without external keys. Live-flight discovery returns real provider data when OpenSky or ADSB.lol respond, and otherwise returns an empty demo-labeled response instead of fabricated traffic.

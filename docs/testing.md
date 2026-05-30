@@ -1,20 +1,19 @@
-# Testing
+# Validation
+
+Automated test files and mock fixtures were removed by request.
 
 ## Backend
 
-- Unit tests cover fuel estimation, weather risk scoring, and generated flight plans.
-- Integration tests cover health, airport search, route creation, active flights, selected flight detail, track metadata, provider status, metrics, and WebSocket live flight streaming.
-- Provider contract tests use mock providers in `Backend/src/mocks`.
-- Run with `cd Backend && npm test`.
+- Run `cd Backend && npm run typecheck`.
+- Run `cd Backend && npm run build`.
+- Run `cd Backend && npm audit --audit-level=moderate`.
 
 ## Frontend
 
-- Vitest and React Testing Library cover the route planning dashboard.
-- Mock fixtures live in `Frontend/src/mocks`.
-- Tests cover route planning, app store behavior, demo socket handling, and selected-flight live socket handling.
-- Playwright covers the search-to-detail smoke flow.
+- Run `cd Frontend && npm run typecheck`.
+- Run `cd Frontend && npm run build`.
+- Run `cd Frontend && npm audit --audit-level=moderate`.
 
-## CI
+## Manual Smoke Check
 
-The GitHub Actions workflow installs, typechecks, tests, and builds both apps.
-It also runs dependency audit checks and frontend Playwright e2e tests.
+Start the backend and frontend, search two airports, generate a route corridor, inspect active-flight provider status, and verify the UI handles an empty live-flight result without showing fabricated traffic.
