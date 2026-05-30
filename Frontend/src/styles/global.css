@@ -371,13 +371,65 @@ button {
 }
 
 .route-map {
+  position: relative;
   width: 100%;
   height: 100%;
   min-height: 640px;
 }
 
-.leaflet-container {
-  background: var(--panel-strong);
+.globe-map {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(95, 161, 219, 0.2), transparent 26rem),
+    radial-gradient(circle at 12% 85%, rgba(33, 58, 88, 0.38), transparent 32rem),
+    linear-gradient(160deg, #040912, #091a2a 58%, #050c16);
+}
+
+.globe-stage,
+.globe-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.globe-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.globe-canvas {
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.globe-canvas:active {
+  cursor: grabbing;
+}
+
+.globe-overlay {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid rgba(237, 246, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(5, 13, 24, 0.54);
+  backdrop-filter: blur(9px);
+}
+
+.globe-overlay span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.globe-overlay strong {
+  font-size: 0.88rem;
+  color: rgba(237, 246, 255, 0.92);
 }
 
 .back-link {
