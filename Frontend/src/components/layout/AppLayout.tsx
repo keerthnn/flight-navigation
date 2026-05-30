@@ -1,6 +1,10 @@
 import { PropsWithChildren } from 'react';
 import { AppBar, Box, Stack, Toolbar, Typography } from '@mui/material';
 import FlightIcon from '@mui/icons-material/Flight';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import { IconButton } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '../nav/ThemeToggle';
 import { ConnectionStatusDot } from '../nav/ConnectionStatusDot';
 import { useAppStore } from '../../store/appStore';
@@ -16,6 +20,9 @@ function deriveStatus(providerStatus: unknown): 'live' | 'degraded' | 'offline' 
 export function AppLayout({ children }: PropsWithChildren) {
   const { providerStatus } = useAppStore();
   const connectionStatus = deriveStatus(providerStatus);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const onFlightDetail = location.pathname.startsWith('/flight/');
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -33,11 +40,29 @@ export function AppLayout({ children }: PropsWithChildren) {
       >
         <Toolbar sx={{ minHeight: '56px !important', display: 'flex', justifyContent: 'space-between' }}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <FlightIcon color="primary" />
-            <Typography variant="h3" sx={{ letterSpacing: '0.05em' }}>FlightNav</Typography>
+            {onFlightDetail ? (
+              <IconButton
+                aria-label="Back to home"
+                size="small"
+                onClick={() => navigate('/')}
+                sx={{ color: 'text.primary' }}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+
+            <Typography
+              variant="h3"
+              sx={{ letterSpacing: '0.05em', cursor: 'pointer' }}
+              onClick={() => navigate('/')}
+              role="button"
+              aria-label="Go to home page"
+            >
+              RouteIQ
+            </Typography>
           </Stack>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <ConnectionStatusDot status={connectionStatus} />
+            {/* <ConnectionStatusDot status={connectionStatus} /> */}
             <ThemeToggle />
           </Stack>
         </Toolbar>

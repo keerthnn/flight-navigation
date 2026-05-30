@@ -12,6 +12,7 @@ import { Units } from '../../utils/units';
 import { AltitudeProfile } from '../charts/AltitudeProfile';
 import { AirspaceCard } from './AirspaceCard';
 import { DaylightStrip } from './DaylightStrip';
+import { NightOpsBanner } from './NightOpsBanner';
 import { WindCard } from './WindCard';
 
 export function LeftPanel({
@@ -19,6 +20,7 @@ export function LeftPanel({
   midpointWeather,
   sunriseSunset,
   pilotDecision,
+  isNightOperation,
   selectedWaypointIndex,
   onSelectWaypointIndex,
 }: {
@@ -26,6 +28,7 @@ export function LeftPanel({
   midpointWeather: MidpointWeatherData | null;
   sunriseSunset: SunriseSunsetData | null;
   pilotDecision: 'GO' | 'CAUTION' | 'NO-GO';
+  isNightOperation: boolean;
   selectedWaypointIndex: number | null;
   onSelectWaypointIndex: (index: number) => void;
 }) {
@@ -57,6 +60,7 @@ export function LeftPanel({
 
   return (
     <Stack spacing={1.2} className="left-panel" sx={{ animation: 'slide-from-left var(--anim-slow) forwards' }}>
+      <NightOpsBanner isNightOperation={isNightOperation} sunsetUtc={sunriseSunset?.sunsetUtc ?? null} />
       <Paper sx={{ p: 1.2 }}>
         <Typography variant="h2" sx={{ fontFamily: 'JetBrains Mono, monospace' }}>{intelligence.flight.fromICAO} {'→'} {intelligence.flight.toICAO}</Typography>
         <Typography variant="body2" color="text.secondary">{intelligence.flight.fromName} to {intelligence.flight.toName}</Typography>

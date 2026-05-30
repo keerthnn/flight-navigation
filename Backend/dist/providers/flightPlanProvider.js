@@ -90,7 +90,7 @@ class GeneratedFlightPlanProvider {
         const [, fromICAO, toICAO] = id.match(/^generated-([A-Z0-9]{3,4})-([A-Z0-9]{3,4})/) ?? [];
         return this.buildGeneratedDetail(fromICAO ?? 'VIDP', toICAO ?? 'VOBL', id);
     }
-    async buildGeneratedDetail(fromICAO, toICAO, id = `generated-${fromICAO}-${toICAO}`) {
+    async buildGeneratedDetail(fromICAO, toICAO, id = `${fromICAO}-${toICAO}`) {
         const from = await this.airports.findByIcao(fromICAO);
         const to = await this.airports.findByIcao(toICAO);
         if (!from || !to) {

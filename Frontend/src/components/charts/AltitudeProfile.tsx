@@ -62,6 +62,10 @@ export function AltitudeProfile({
   const hoverPoint = focusIndex !== null ? points[focusIndex] : undefined;
   const hoverX = focusIndex !== null ? pointX(focusIndex) : 0;
   const hoverY = hoverPoint ? pointY(hoverPoint.altFt) : 0;
+  const selectedPoint = selectedIndex !== null && selectedIndex !== undefined ? points[selectedIndex] : undefined;
+  const selectedX = selectedPoint ? pointX(selectedIndex as number) : 0;
+  const selectedY = selectedPoint ? pointY(selectedPoint.altFt) : 0;
+  const isDark = theme.palette.mode === 'dark';
 
   return (
     <Stack spacing={0.7}>
@@ -116,18 +120,51 @@ export function AltitudeProfile({
             const x = pointX(index);
             const y = pointY(point.altFt);
             const active = focusIndex === index;
+            const isSelected = selectedIndex === index;
             return (
-              <circle
-                key={point.node.ident + index}
-                cx={x}
-                cy={y}
-                r={active ? 5 : 2.8}
-                fill={active ? theme.palette.secondary.main : theme.palette.primary.main}
-                style={{ cursor: 'pointer' }}
-                onClick={() => onSelectIndex?.(index)}
-              />
+              <g key={point.node.ident + index}>
+                {isSelected ? (
+                  <>
+                    <circle cx={x} cy={y} r={11} fill={theme.palette.warning.main} opacity={isDark ? 0.35 : 0.22} />
+                    <circle cx={x} cy={y} r={7.2} fill="none" stroke={theme.palette.warning.main} strokeWidth={2.8} />
+                  </>
+                ) : null}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={active ? 5.2 : isSelected ? 4.6 : 2.8}
+                  fill={active ? theme.palette.secondary.main : isSelected ? theme.palette.warning.main : theme.palette.primary.main}
+                  stroke={isSelected ? theme.palette.background.paper : 'none'}
+                  strokeWidth={isSelected ? 1.4 : 0}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => onSelectIndex?.(index)}
+                />
+              </g>
             );
           })}
+
+          {selectedPoint ? (
+            <>
+              <line
+                x1={selectedX}
+                y1={topPad}
+                x2={selectedX}
+                y2={height - bottomPad}
+                stroke={theme.palette.warning.main}
+                strokeDasharray="3 5"
+                strokeWidth={2}
+                opacity={isDark ? 0.9 : 0.8}
+              />
+              <rect
+                x={Math.max(leftPad, selectedX - 10)}
+                y={topPad}
+                width={20}
+                height={chartH}
+                fill={theme.palette.warning.main}
+                opacity={isDark ? 0.14 : 0.08}
+              />
+            </>
+          ) : null}
 
           {hoverPoint ? (
             <g>

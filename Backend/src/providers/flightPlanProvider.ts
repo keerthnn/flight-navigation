@@ -94,7 +94,7 @@ export class GeneratedFlightPlanProvider implements FlightPlanProvider {
     return this.buildGeneratedDetail(fromICAO ?? 'VIDP', toICAO ?? 'VOBL', id);
   }
 
-  private async buildGeneratedDetail(fromICAO: string, toICAO: string, id = `generated-${fromICAO}-${toICAO}`): Promise<FlightPlanDetail> {
+  private async buildGeneratedDetail(fromICAO: string, toICAO: string, id = `${fromICAO}-${toICAO}`): Promise<FlightPlanDetail> {
     const from = await this.airports.findByIcao(fromICAO);
     const to = await this.airports.findByIcao(toICAO);
     if (!from || !to) {

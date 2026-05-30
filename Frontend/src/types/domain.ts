@@ -41,6 +41,8 @@ export interface WeatherPoint {
   visibilityMeters: number;
   windSpeedMps: number;
   riskWeight: number;
+  cbDetected: boolean;
+  flightCategory: 'VFR' | 'MVFR' | 'IFR' | 'LIFR';
   source: 'aviationweather' | 'openmeteo' | 'synthetic';
 }
 
@@ -118,6 +120,12 @@ export interface RouteIntelligence {
   weather: WeatherPoint[];
   fuel: FuelEstimate;
   routeWeight: number;
+  pilotDecision: 'GO' | 'CAUTION' | 'NO-GO';
+  isNightOperation: boolean;
+  sunriseSunsetWindow: {
+    sunriseUtc: string;
+    sunsetUtc: string;
+  } | null;
   generatedAt: string;
 }
 

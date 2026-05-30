@@ -37,6 +37,14 @@ export function PilotDecisionCard({
     return { bg: 'error.main', text: 'NO-GO - Do Not Depart', icon: <BlockIcon /> };
   }, [decision]);
 
+  const hasCB = intelligence.weather.some((point) => point.cbDetected);
+  const hasIFR = intelligence.weather.some((point) => point.flightCategory === 'IFR' || point.flightCategory === 'LIFR');
+  const summary = decision === 'CAUTION'
+    ? `CAUTION - ${hasIFR ? 'IFR conditions present' : 'Operational risks present'}${hasCB ? ', CB/TS hazard detected' : ''}${intelligence.isNightOperation ? ', night operation' : ''}.`
+    : decision === 'NO-GO'
+      ? `NO-GO - ${hasCB ? 'CB/TS hazard on route' : 'risk level too high'}${intelligence.isNightOperation ? ', night operation active' : ''}.`
+      : 'GO - conditions acceptable for planning.';
+
   function saveBrief() {
     const distanceNm = Units.kmToNm(intelligence.flight.distance);
     const text = `FLIGHT BRIEF - ${intelligence.flight.fromICAO} -> ${intelligence.flight.toICAO}\nGenerated: ${new Date().toISOString()}\nDECISION: ${decision}\nDISTANCE: ${distanceNm} nm / ${intelligence.flight.distance} km\nEST TIME: ${Units.hoursToHHMM(distanceNm / 480)}Z\nSUNRISE: ${sunriseSunset ? Units.formatUtcTime(sunriseSunset.sunriseUtc) : '-'}\nSUNSET: ${sunriseSunset ? Units.formatUtcTime(sunriseSunset.sunsetUtc) : '-'}\nNOT FOR NAVIGATION - PLANNING USE ONLY\n\nNOTES:\n${notes}`;
@@ -53,7 +61,12 @@ export function PilotDecisionCard({
     <Paper className="pilot-decision-card" sx={{ p: 1.2, position: 'sticky', bottom: 0, zIndex: 10 }}>
       <Box sx={{ bgcolor: banner.bg, color: 'white', p: 1, borderRadius: 1, display: 'flex', gap: 0.7, alignItems: 'center' }}>{banner.icon}<Typography variant="h3">{banner.text}</Typography></Box>
       <Stack spacing={1} sx={{ mt: 1 }}>
-        <Typography variant="caption">Best window: {sunriseSunset ? `${Units.formatUtcTime(sunriseSunset.sunriseUtc)} - ${Units.formatUtcTime(sunriseSunset.sunsetUtc)}` : 'Unavailable'}</Typography>
+        <Typography variant="caption">{summary}</Typography>
+        <Typography variant="caption">
+          {intelligence.isNightOperation
+            ? `IFR departure: Available now (night) · VFR window: Tomorrow ${sunriseSunset ? Units.formatUtcTime(sunriseSunset.sunriseUtc) : '--:--Z'}`
+            : `Best window: ${sunriseSunset ? `${Units.formatUtcTime(sunriseSunset.sunriseUtc)} - ${Units.formatUtcTime(sunriseSunset.sunsetUtc)}` : 'Unavailable'}`}
+        </Typography>
         <TextField size="small" multiline rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add flight notes..." />
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={saveBrief}>Save Flight Brief</Button>
       </Stack>

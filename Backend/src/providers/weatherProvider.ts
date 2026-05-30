@@ -48,6 +48,8 @@ export class CompositeWeatherProvider implements WeatherProvider {
         visibilityMeters: Number(current.visibility ?? 10_000),
         windSpeedMps: Number(current.wind_speed_10m ?? 18) / 3.6,
         riskWeight: weatherRisk(description, Number(current.visibility ?? 10_000), Number(current.wind_speed_10m ?? 18) / 3.6),
+        cbDetected: /CB|TS|TSRA|TSGR|TSSN|TSPE|VCTS/.test(description.toUpperCase()),
+        flightCategory: 'VFR',
         source: 'openmeteo',
       };
     } catch {
@@ -76,6 +78,8 @@ export class CompositeWeatherProvider implements WeatherProvider {
         visibilityMeters,
         windSpeedMps,
         riskWeight: weatherRisk(description, visibilityMeters, windSpeedMps),
+        cbDetected: /CB|TS|TSRA|TSGR|TSSN|TSPE|VCTS/.test(description.toUpperCase()),
+        flightCategory: 'VFR',
         source: 'aviationweather',
       };
     } catch {
@@ -98,6 +102,8 @@ function syntheticWeather(node: RouteNode): WeatherPoint {
     visibilityMeters: Math.round(visibility),
     windSpeedMps: Number(wind.toFixed(1)),
     riskWeight: weatherRisk(description, visibility, wind),
+    cbDetected: false,
+    flightCategory: 'VFR',
     source: 'synthetic',
   };
 }

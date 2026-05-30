@@ -34,6 +34,7 @@ import { Units } from '../../utils/units';
 import { Compass } from '../../components/telemetry/Compass';
 import { AltimeterStrip } from '../../components/telemetry/AltimeterStrip';
 import { PilotDecisionCard } from '../../components/panels/PilotDecisionCard';
+import { CBWarningBanner } from '../../components/panels/CBWarningBanner';
 import { getFlightStableId } from '../../utils/flightIdentity';
 
 function OperationsContent({ activeTab }: { activeTab: 1 | 2 | 3 }) {
@@ -99,6 +100,7 @@ function RightPanel({ tabOverride }: { tabOverride?: 0 | 1 | 2 | 3 }) {
 
   return (
     <Stack spacing={1.2} sx={{ animation: 'slide-from-right var(--anim-slow) forwards' }}>
+      {detail.hasCB ? <CBWarningBanner affectedNodes={detail.cbNodes} /> : null}
       {activeTab === 0 ? (
         <Paper sx={{ p: 1.2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -190,6 +192,7 @@ function LeftPanelSlot() {
       midpointWeather={detail.midpointWeather}
       sunriseSunset={detail.sunriseSunset}
       pilotDecision={detail.pilotDecision}
+      isNightOperation={detail.isNightOperation}
       selectedWaypointIndex={detail.selectedWaypointIndex}
       onSelectWaypointIndex={(index) => detail.setSelectedWaypointIndex(index)}
     />

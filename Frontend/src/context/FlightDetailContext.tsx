@@ -29,6 +29,10 @@ interface FlightDetailState {
   sunriseSunset: SunriseSunsetData | null;
   sunriseSunsetLoading: boolean;
   pilotDecision: 'GO' | 'CAUTION' | 'NO-GO';
+  hasCB: boolean;
+  cbNodes: string[];
+  isNightOperation: boolean;
+  alternatesTriggered: boolean;
   routeId: string;
 }
 
@@ -77,15 +81,20 @@ export function FlightDetailProvider({ routeId, children }: PropsWithChildren<{ 
   const activeFlights = backendFlights.length ? backendFlights : fallbackFlights;
   const live = useLiveFlight(selectedFlight?.provider, selectedFlight?.id, routeId);
 
-  const weatherCategories = intelligenceAsync.data?.weather.map((point) => {
-    const visKm = point.visibilityMeters / 1000;
-    if (visKm < 1.6) return 'LIFR';
-    if (visKm < 3) return 'IFR';
-    if (visKm < 5) return 'MVFR';
-    return 'VFR';
-  }) ?? [];
+  const hasCB = intelligenceAsync.data?.weather.some((point) => point.cbDetected) ?? false;
+  const cbNodes = intelligenceAsync.data?.weather.filter((point) => point.cbDetected).map((point) => point.ident) ?? [];
+  const isNightOperation = intelligenceAsync.data?.isNightOperation ?? false;
+  const destinationWeather = intelligenceAsync.data?.weather[intelligenceAsync.data.weather.length - 1] ?? null;
+  const alternatesTriggered = Boolean(
+    hasCB
+      || destinationWeather?.flightCategory === 'IFR'
+      || destinationWeather?.flightCategory === 'LIFR'
+      || intelligenceAsync.data?.pilotDecision === 'NO-GO'
+      || intelligenceAsync.data?.pilotDecision === 'CAUTION',
+  );
 
   const pilotDecision = useMemo<'GO' | 'CAUTION' | 'NO-GO'>(() => {
+    if (intelligenceAsync.data?.pilotDecision) return intelligenceAsync.data.pilotDecision;
     const risk = intelligenceAsync.data?.routeWeight ?? 0;
     const closeTraffic = activeFlights.filter((flight) => {
       if (!nodes.length) return false;
@@ -93,11 +102,11 @@ export function FlightDetailProvider({ routeId, children }: PropsWithChildren<{ 
       const delta = Math.hypot(flight.latitude - anchor.lat, flight.longitude - anchor.lon);
       return delta < 0.2;
     }).length;
-
-    if (risk >= 6 || weatherCategories.includes('LIFR') || closeTraffic > 5) return 'NO-GO';
-    if (risk >= 3 || weatherCategories.includes('IFR') || (weather.data?.windspeedKnots ?? 0) > 50) return 'CAUTION';
+    const categories = intelligenceAsync.data?.weather.map((point) => point.flightCategory) ?? [];
+    if (risk >= 6 || categories.includes('LIFR') || closeTraffic > 5 || hasCB) return 'NO-GO';
+    if (risk >= 3 || categories.includes('IFR') || (weather.data?.windspeedKnots ?? 0) > 50 || isNightOperation) return 'CAUTION';
     return 'GO';
-  }, [activeFlights, intelligenceAsync.data?.routeWeight, nodes, weather.data?.windspeedKnots, weatherCategories]);
+  }, [activeFlights, hasCB, intelligenceAsync.data, isNightOperation, nodes, weather.data?.windspeedKnots]);
 
   const value: FlightDetailState = {
     intelligence: intelligenceAsync.data ?? null,
@@ -120,6 +129,10 @@ export function FlightDetailProvider({ routeId, children }: PropsWithChildren<{ 
       : null,
     sunriseSunsetLoading: sunrise.loading,
     pilotDecision,
+    hasCB,
+    cbNodes,
+    isNightOperation,
+    alternatesTriggered,
     routeId,
   };
 
