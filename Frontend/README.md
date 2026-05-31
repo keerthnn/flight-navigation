@@ -2,6 +2,19 @@
 
 Vite + React + TypeScript dashboard for aviation route intelligence and live aircraft discovery.
 
+## Setup
+
+```sh
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173` by default.
+
+Required env file:
+
+- `.env` (single env file for frontend)
+
 ## Scripts
 
 - `npm run dev` starts the local Vite server.
@@ -9,4 +22,4 @@ Vite + React + TypeScript dashboard for aviation route intelligence and live air
 - `npm run build` creates a production bundle.
 - `npm run preview` serves the production bundle locally.
 
-Automated test and mock fixture files were removed by request. Use the root README and `docs/testing.md` for the current validation flow.
+For full project setup (including backend), use the root `README.md`.

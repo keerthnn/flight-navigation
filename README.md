@@ -1,76 +1,104 @@
 # Flight Navigation Intelligence Platform
 
-Production-style aviation route planning dashboard built with React, Vite, TypeScript, Next.js (Pages Router API), and provider abstractions for flight plans, aviation weather, airport data, and fuel estimation.
+Production-style aviation route planning dashboard with a React + Vite frontend and a Next.js (Pages Router API) backend.
 
-## What This Demonstrates
+## Project Structure
 
-- Feature-based React architecture with a reusable design system, dashboard layout, typed API layer, route-level code splitting, dark/light theme, loading states, empty states, and accessible airport autocomplete.
-- Modular Next.js Pages Router backend with typed API handlers, services, providers, repositories, validation, caching, retry, structured logging, health checks, and centralized error handling.
-- Safe provider strategy: live-free APIs where possible, optional keyed integrations, deterministic fallbacks for demos, and no browser-exposed API keys.
-- Interview-ready engineering practices: TypeScript, Docker, CI workflow, API integration guide, deployment notes, and scaling roadmap.
+- `Frontend` - React, Vite, TypeScript UI.
+- `Backend` - Next.js API server, service/provider layers, caching, and integrations.
 
-## Quick Start
+## Prerequisites
+
+- Node.js `>= 20`
+- npm `>= 10`
+- Git
+
+Check versions:
+
+```sh
+node -v
+npm -v
+```
+
+## First-Time Setup (Fresh Clone)
+
+1. Clone and open the project:
+
+```sh
+git clone <your-repo-url>
+cd flight-navigation
+```
+
+2. Install backend dependencies:
 
 ```sh
 cd Backend
 npm install
-cp .env.example .env
+```
+
+3. Install frontend dependencies:
+
+```sh
+cd ../Frontend
+npm install
+```
+
+4. Start backend (Terminal 1):
+
+```sh
+cd Backend
 npm run dev
 ```
+
+5. Start frontend (Terminal 2):
 
 ```sh
 cd Frontend
-npm install
-cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:5173`. The backend runs on `http://localhost:5000`.
+6. Open the app:
 
-## Core Flows
+- Frontend: `http://localhost:5173`
+- Backend API base: `http://localhost:5001/api`
 
-- Search airports from the bundled airport dataset.
-- Search flight plans through the backend adapter.
-- Use Flight Plan Database when `FLIGHT_PLAN_DB_API_KEY` is configured.
-- Fall back to generated routes when live provider access is unavailable.
-- Inspect route corridor, active aircraft near that corridor, weather impact, fuel estimate, emissions estimate, provider mode, selected-aircraft telemetry, and exportable JSON summary.
-- Select a real/demo aircraft near the route. OpenSky is tried first, ADSB.lol is the fallback, and clearly labeled demo traffic is used only when live data is unavailable or mock mode is enabled.
+## Environment Files
 
-## Interview Walkthrough
+Use only one environment file per app:
 
-1. The browser talks only to the backend API and WebSocket gateway; no third-party secrets or provider URLs are embedded in feature code.
-2. The backend uses provider interfaces for flight plans, weather, airports, and fuel so deprecated or paid APIs can be replaced without rewriting controllers or UI.
-3. Provider fallbacks keep the app stable when live-free APIs are rate-limited, unavailable, or require future keys.
-4. Active flight tracking is isolated behind backend providers so the app can use free live networks without coupling React to third-party APIs.
-5. Monitoring endpoints expose cache, provider fallback, HTTP request, and WebSocket counters for production-readiness conversations.
-6. The frontend uses feature modules, shared UI primitives, a typed store, lazy-loaded pages, and a live-flight socket hook with polling fallback.
-7. CI validates type safety, builds, and audit checks.
+- `Backend/.env`
+- `Frontend/.env`
 
-## Validation
+Both `.env` files are part of this project setup. Update values as needed for your environment.
+
+## Useful Commands
+
+Backend:
 
 ```sh
-cd Backend && npm run typecheck && npm run build
-cd Frontend && npm run typecheck && npm run build
+cd Backend
+npm run dev
+npm run typecheck
+npm run build
 ```
 
-## Documentation
+Frontend:
 
-- [Architecture](docs/architecture.md)
-- [API integrations](docs/api-integrations.md)
-- [Deployment](docs/deployment.md)
-- [Testing](docs/testing.md)
-- [Observability](docs/observability.md)
-- [Interview notes](docs/interview-notes.md)
-- [Roadmap](docs/roadmap.md)
+```sh
+cd Frontend
+npm run dev
+npm run typecheck
+npm run build
+npm run preview
+```
 
-## Environment And Secrets
-
-Never commit `.env` files. API keys belong only in backend environment variables. The frontend only receives `VITE_API_BASE_URL` and tile configuration.
-
-## Docker
+## Docker (Optional)
 
 ```sh
 docker compose up --build
 ```
 
-The compose setup starts backend and frontend containers for local production-style testing.
+## Notes
+
+- If optional provider keys are not set in backend `.env`, the app uses deterministic fallback behavior.
+- API keys should only be stored in `Backend/.env` and never in frontend code.
