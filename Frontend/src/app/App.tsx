@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AppProviders } from './providers';
 import { AppLayout } from '../components/layout/AppLayout';
 import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
@@ -23,7 +23,7 @@ export function App() {
   return (
     <ErrorBoundary>
       <AppProviders>
-        <BrowserRouter>
+        <HashRouter>
           <AppLayout>
             <Suspense fallback={<LoadingState label="Preparing aviation workspace" />}>
               <Routes>
@@ -33,7 +33,7 @@ export function App() {
               </Routes>
             </Suspense>
           </AppLayout>
-        </BrowserRouter>
+        </HashRouter>
       </AppProviders>
     </ErrorBoundary>
   );

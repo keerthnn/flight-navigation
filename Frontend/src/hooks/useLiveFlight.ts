@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { config } from '../config/env';
 import { flightApi } from '../services/api/flightApi';
 import { createLiveFlightSocket } from '../services/realtime/liveFlightClient';
 import { LiveFlightDetail, LiveFlightProvider, SocketStatus } from '../types/domain';
@@ -49,6 +50,14 @@ export function useLiveFlight(provider?: LiveFlightProvider, flightId?: string, 
       if (pollTimer) window.clearInterval(pollTimer);
       pollTimer = undefined;
     };
+
+    if (!config.liveWsEnabled) {
+      startPolling();
+      return () => {
+        stopped = true;
+        clearPolling();
+      };
+    }
 
     const connect = () => {
       if (stopped) return;
