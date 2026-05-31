@@ -71,6 +71,36 @@ Use only one environment file per app:
 
 Both `.env` files are part of this project setup. Update values as needed for your environment.
 
+### Backend env reference (`Backend/.env`)
+
+| Key | Required | Description | Example |
+| --- | --- | --- | --- |
+| `PORT` | Yes | Backend server port. | `5001` |
+| `NODE_ENV` | Yes | Runtime mode. | `development` |
+| `LOG_LEVEL` | Yes | Log verbosity level. | `info` |
+| `CORS_ORIGINS` | Yes | Comma-separated allowed frontend origins. | `http://localhost:5173,http://localhost:3000` |
+| `FLIGHT_PLAN_DB_API_KEY` | Optional | Flight Plan Database key. Leave empty to use generated fallback routes. | `` |
+| `FLIGHT_PLAN_DB_BASE_URL` | Yes | Base URL for flight plan provider. | `https://api.flightplandatabase.com` |
+| `AVIATION_WEATHER_BASE_URL` | Yes | Base URL for aviation weather provider. | `https://aviationweather.gov/api/data` |
+| `OPEN_METEO_BASE_URL` | Yes | Base URL for Open-Meteo data. | `https://api.open-meteo.com/v1` |
+| `OPENSKY_BASE_URL` | Yes | Base URL for OpenSky live traffic provider. | `https://opensky-network.org/api` |
+| `ADSB_LOL_BASE_URL` | Yes | Base URL for ADSB.lol fallback traffic provider. | `https://api.adsb.lol` |
+| `FLIGHT_TRACKING_MODE` | Yes | `auto` uses live + fallback, `mock` forces mock traffic. | `auto` |
+| `AIRPORT_CSV_PATH` | Yes | Path to airport CSV used by backend airport repository. | `../Frontend/public/iata-icao.csv` |
+| `CACHE_TTL_SECONDS` | Yes | Cache time-to-live in seconds. | `300` |
+| `RATE_LIMIT_WINDOW_MS` | Yes | Rate limit window duration in milliseconds. | `60000` |
+| `RATE_LIMIT_MAX` | Yes | Max requests allowed per rate limit window. | `120` |
+| `API_KEY` | Yes | Project-specific backend key used by your app logic. | `<your-key>` |
+
+### Frontend env reference (`Frontend/.env`)
+
+| Key | Required | Description | Example |
+| --- | --- | --- | --- |
+| `VITE_API_BASE_URL` | Yes | Backend REST API base URL used by the frontend. | `http://localhost:5001/api` |
+| `VITE_WS_BASE_URL` | Yes | Backend WebSocket URL for live flight updates. | `ws://localhost:5001/ws` |
+| `VITE_TILE_URL` | Yes | Map tile URL template. | `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` |
+| `VITE_TILE_ATTRIBUTION` | Yes | Attribution text displayed for map tiles. | `© OpenStreetMap contributors` |
+
 ## Useful Commands
 
 Backend:
