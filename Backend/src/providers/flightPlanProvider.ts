@@ -97,7 +97,7 @@ export class GeneratedFlightPlanProvider implements FlightPlanProvider {
   private async buildGeneratedDetail(
     fromICAO: string,
     toICAO: string,
-    id = `generated-${fromICAO}-${toICAO}`,
+    id = `${fromICAO}-${toICAO}`,
   ): Promise<FlightPlanDetail> {
     const from = await this.airports.findByIcao(fromICAO);
     const to = await this.airports.findByIcao(toICAO);
