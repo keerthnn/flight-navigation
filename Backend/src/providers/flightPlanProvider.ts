@@ -90,11 +90,15 @@ export class GeneratedFlightPlanProvider implements FlightPlanProvider {
 
   async getById(id: string): Promise<FlightPlanDetail> {
     metrics.recordProviderEvent('generatedFallback');
-    const [, fromICAO, toICAO] = id.match(/^generated-([A-Z0-9]{3,4})-([A-Z0-9]{3,4})/) ?? [];
+    const [, fromICAO, toICAO] = id.match(/^(?:generated-)?([A-Z0-9]{3,4})-([A-Z0-9]{3,4})(?:-.+)?$/i) ?? [];
     return this.buildGeneratedDetail(fromICAO ?? 'VIDP', toICAO ?? 'VOBL', id);
   }
 
-  private async buildGeneratedDetail(fromICAO: string, toICAO: string, id = `${fromICAO}-${toICAO}`): Promise<FlightPlanDetail> {
+  private async buildGeneratedDetail(
+    fromICAO: string,
+    toICAO: string,
+    id = `generated-${fromICAO}-${toICAO}`,
+  ): Promise<FlightPlanDetail> {
     const from = await this.airports.findByIcao(fromICAO);
     const to = await this.airports.findByIcao(toICAO);
     if (!from || !to) {
